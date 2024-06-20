@@ -1,0 +1,796 @@
+What's the type of props?
+
+You can define your own type
+type MyProps = {
+  title: string
+}
+or use if you have children: 
+import { type ReactNode } from 'react'
+type MyProps = {
+  title: string;
+  children: React.ReactNode;
+}
+
+or an alternative: React.PropsWithChildren<{title: string}>
+
+or also if you use a functional component, you can do:
+const Goal: FC<MyProps> = ({title, children}) => {...}
+
+
+State?
+const [goals, setGoals] = React.useState([]);
+function handleAddGoal() {
+  setGoals(prevGoals => {
+    const newGoal: Goal = {
+      id: Math.random()
+      title: 'My title'
+    }
+    return [
+      ...prevGoals,
+      newGoal,
+    ]
+  })
+}
+<button onClick={handleAddGoal}
+by default, type is never, so you have to define it:
+useState<Goals[]>([]) or <Array<Goals>>
+
+
+type a function
+type GoalListProps = {
+  goals: Goal[]
+  onDeleteGoal: (id: number) => void
+}
+
+
+Using a form
+import { type FormEvent } from 'react'
+
+function handleSubmit(event: FormEvent) {
+  event.preventDefault();
+  //
+}
+
+<form onSubmit={handleSubmit}>...</form>
+
+if you use a function inside the onSubmit, ts will infere correctly the type
+
+
+use state hook to handle form
+or use new FormData(event.currentTarget) -> use then FormEvent<HTMLFormElement> to handle event correctly
+or use refs
+
+const goal = useRef(null) -> null here prevents TS error
+
+function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  event.preventDefault();
+
+  const newGoal = goal.current.value -> generates an error!
+  const newGoal = goal.current!.value -> generates also an error!
+}
+
+const goal = useRef<HTMLInputElement>(null) -> fix the error above
+
+
+type NewGoal = {
+  onAddGoal: (goal: string, summary: string) => void
+}
+
+function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  event.preventDefault();
+
+  const newGoal = goal.current!.value;
+  ...
+  onAddGoal(newGoal, newSummary);
+  
+  // Reset form
+  event.currentTarget.reset();
+}
+
+in app:
+function handleAddGoal(goal: string, summary: string) {
+  setGoals(...)
+}
+
+
+Rendering Different Content based on Props
+
+type InfoxProps = {
+  mode: 'hint' | 'warning'
+  children: React.ReactNode
+}
+
+export default function Infox({ mode, children}: InfoxProps) {
+  if (mode === 'hint') {
+    return <aside className="info hint"><p>{children}</p></aside>
+  }
+  return <aside className="info warning"><p>{children}</p></aside>
+}
+
+If you want a severity prop only for the mode warning, how to do that?
+
+type InfoxProps = {
+  mode: 'hint' | 'warning'
+  severity?: 'low' | 'medium' | 'high'
+  children: React.ReactNode
+} -> this works but if you forget the severity prop, it can break
+
+solution:
+Use a discriminated union!
+
+type HintBoxProps = {
+  mode: 'hint'
+  children: React.ReactNode
+}
+
+type WarningBoxProps = {
+  mode: 'warning'
+  children: React.ReactNode
+  severity: 'low' | ...
+}
+
+type InfoxProps = HintBoxProps | WarningBoxProps
+
+export default function Infox(props: InfoxProps) {
+  const { children, mode } = props;
+
+  if (mode === 'hint') {
+    return <aside>...</aside>
+  }
+
+  const { severity } = props; -> now typescript knows about severity
+  return <aside>...</aside>
+}
+
+
+Building Wrapper Components:
+
+type InputProps = {
+  label: string;
+  id: string;
+}
+
+export default function Input({ id, label}: InputProps) {
+  return <p>
+    <label htmlFor={id}>{label}</label>
+    <input type="text" id={id} />
+  </p>
+}
+
+here we don't accept all the props that inputs have by default
+
+export default function Input({ id, label, ...props}: InputProps) {
+  ...
+  <input id={id} {...props} />
+
+solution is to update the type:
+
+type InputProps = {
+  label: string;
+  id: string;
+} & ComponentPropsWithoutRef
+or ComponentPropsWithRef (if you need to forward refs to your component) 
+But since this is a generic type, you need to add
+& ComponentPropsWithoutRef<'input'> or & ComponentPropsWithoutRef<>
+
+and we can use it
+<Input id="test" type="text" label="test" />
+
+
+For a Button!
+
+type ButtonProps = {
+  as: 'button'
+} & ComponentPropsWithoutRef<'button'>
+
+type AnchorProps = {
+  as: 'anchor'
+} & ComponentPropsWithoutRef<'a'>
+
+edf Button (props: AnchorProps | ButtonProps) {
+  const { as, ...otherProps } = props;
+
+  if (as === 'anchor') {
+    return <a {...props}></a>
+  }
+  
+  return <button {...props}></button>
+}
+
+the only issue is that we have to use the prop 'as' on each component
+the href prop will tell us this is an anchor element
+
+if (props.href)-> ts does not know how to solve this
+if ('href' in props) -> ts understands it for anchors but not for button
+
+solution: use a type predicate
+function isAnchorProps(props: ButtonProps | AnchorProps): props is AnchorProps {
+  return 'href' in props;
+}
+
+edf Button (props: AnchorProps | ButtonProps) {
+  if (isAnchorProps(props)) {
+    return <a {...props}></a>
+  }
+  
+  return <button {...props}></button>
+}
+
+downside: if you use target or disabled for button or anchor
+
+solution:
+type ButtonProps = ComponentPropsWithoutRef<'button'> & {
+  href?: never;
+}
+
+type AnchorProps = ComponentPropsWithoutRef<'a'> & {
+  href?: string; -> if you make it not optional, on button you'll have to add it on the button as undefined value
+}
+
+
+
+Building Polymorphic Components:
+
+To share common logic
+
+type ContainerProps = {
+  as: ElementType (from 'react') -> name of the component
+  children: React.ReactNode
+} & ComponentPropsWithoutRef<>
+
+edf Container({as, children}: ContainerProps) {
+  const Component = as;
+
+  return <Component>{children}</Component>
+}
+
+<Container as={Button}>Click me</Container>
+
+Generic type to turn in:
+
+type ContainerProps<T extends ElementType> = { -> T for Type
+  as: T;
+  children: React.ReactNode;
+} & ComponentPropsWithoutRef<T>
+
+then turn the fn component to a generic one:
+edf Container<C extends ElementType>({as, children, ...props}: ContainerProps<C>) {
+  const Component = as;
+
+  return <Component {...props}>{children}</Component> -> but we'll get a ts error here
+}
+
+solution: give a default value to Component:
+  const Component = as || 'div'
+
+
+
+Forwarding Refs and Exposing Component APIs:
+
+Function components cannot be given refs in react.
+We have to use React.forwardRef()
+
+so instead of using ComponentPropsWithRef, we have to refactor the edf to a functional component
+
+for the input example
+type InputProps = {
+  label: string;
+  id: string;
+} & ComponentPropsWithoutRef<'input'>
+
+switch from
+export default function Input({ id, label, ...props}: InputProps) {
+  const ref = useRef(null)
+  return <p>
+    <label htmlFor={id}>{label}</label>
+    <input id={id} {...props} ref={ref} />
+  </p>
+}
+to 
+const Input = React.forwardRef(function Input({ id, label, ...props}: InputProps, ref) {-> ts error : ref: React.ForwardedRef<unknown>
+  return <p>
+    <label htmlFor={id}>{label}</label>
+    <input id={id} {...props} ref={ref} />
+  </p>
+})
+
+export default Input;
+
+solution:
+forwardRef is a generic function -> use forwardRef<HTMLInputElement, InputProps>
+if you add a first generic type, you must add a second for the props
+
+so the code should be:
+const Input = React.forwardRef<HTMLInputElement, InputProps>(function Input({ id, label, ...props}, ref) {
+  ...
+
+and when using it:
+function App() {
+  const input = useRef<HTMLInputElement>(null);
+
+  return (
+    <main>
+      <Input label="test" id="test" ref={input} />
+    </main>
+  )
+}
+
+
+Form.tsx
+type FormProps = ComponentPropsWithoutRef<'form'> & {
+  onSave: (value: unknown) => void; 
+}
+
+edf Form(props: FormProps) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const formData = new FormData(event.currentTarget); -> works with a 'name' prop on each field
+
+    // so you'll need to add name={props.name} on the Input component first
+    const data = Object.fromEntries(formData)
+    props.onSave(data)
+  }
+
+  return <form onSubmit={handleSubmit} {...props}>
+    {props.children}
+  </form>
+}
+
+function App() {
+  function handleSave(data: unknown) {
+    // here we know the type we want
+    const ourData = data as { name: string; age: string }; -> string because this comes from the form
+
+  }
+
+  return (
+    <main>
+      <Form onSave={handleSave}>
+        <Input type="text" label="Name" id="name" />
+        <Input type="number" label="Age" id="age" />
+        <p>
+          <Button>Save</Button>
+        </p>
+      </Form>
+    </main>
+  )
+}
+
+we still get a ts error when using props.onSave from the Form component (not recognized by ts)
+solution:
+destructure the props!
+edf Form({onSave, children, ...otherProps}: FormProps) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const formData = new FormData(event.currentTarget);
+    const data = Object.fromEntries(formData)
+    onSave(data)
+  }
+
+  return <form onSubmit={handleSubmit} {...otherProps}>
+    {props.children}
+  </form>
+}
+
+
+if we want to have a ref on the form to reset the form:
+edf Form({onSave, children, ...otherProps}: FormProps) {
+  const form = useRef<HTMLFormElement>(null);
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const formData = new FormData(event.currentTarget);
+    const data = Object.fromEntries(formData)
+    onSave(data);
+    form.current?.reset();
+  }
+
+  return <form onSubmit={handleSubmit} {...otherProps} ref={form}>
+    {props.children}
+  </form>
+}
+
+
+If we want to use the ref from the App and not just from inside the Form, 
+we have to expose the Component API with useImperativeHandle hook
+That will only work in a component that receives a forwardedRef
+
+so code in Form becomes:
+const Form = forwardRef<FormApi, FormProps>(function Form({
+  onSave,
+  children,
+  ...otherProps
+}, 
+ref) {
+  
+  const form = useRef<HTMLFormElement>(null);
+
+  useImperativeHandle(ref, () => {
+    return {
+      clear() {
+        form.current?.reset();
+      }
+    }
+  })
+
+  ...
+}
+)
+
+export default Form;
+
+in Form, we need to add a new type for the useImperativeHandle <MissingTypeHere> for ts
+export type FormApi = {
+  clear: () => void;
+}
+
+in the App
+function App() {
+  const customForm = useRef<FormApi>(null);
+
+  function handleSave(data: unknown) {
+    const ourData = data as { name: string; age: string };
+    customForm.current?.clear(); -> clear comes from the useImperativeHandle hook defined in the Form component!
+  }
+
+  return (
+    ...
+      <Form onSave={handleSave} ref={customForm}
+    ...
+  )
+}
+
+
+Context API
+in store.tsx
+type Timer = {
+  name: string;
+  duration: number
+}
+type TimersState = {
+  isRunning: boolean;
+  timers: Timer[]
+}
+type TimersContextValue = TimersState & {
+  addTimer: (timer: Timer) => void;
+  startTimers: () => void;
+  stopTimers: () => void;
+}
+
+export const TimersContext = createContext<TimersContextValue | null>(null);
+
+type TimersProps = {
+  children: ReactNode;
+}
+
+export default function TimersContextProvider({ children }: TimersProps) {
+  const ctx: TimersContextValue = {
+    timers: [],
+    isRunning: false,
+    addTimer(data) {},
+    startTimers() {},
+    stopTimers() {},
+  }
+  return <TimersContext.Provider value={ctx}>
+    {children}
+  </TimersContext.Provider>
+}
+
+to use it elsewhere!
+const timersCtx = useContext(TimersContext)
+but you have to check if it is null or not -> solution is to make a custom hook
+
+export function useTimersContext() {
+  const timersCtx = useContext(TimersContext)
+
+  if (timersCtx === null) {
+    throw new Error('should not happen')
+  }
+
+  return timersCtx
+}
+
+and then use it
+const timersCtx = useTimersContext()-> ts now knows it's not null
+and later:
+{timersCtx.isRunning && ...}
+
+One way to make context dynamic and interactive is to use state in the TimersContextProvider
+or you can use useReducer hook
+
+
+Reducer Functions
+useReducer(reducer, initialState)
+
+const initialState: TimersState = {
+  timers: [],
+  isRunning: true,
+}
+
+type StartTimersAction = {
+  type: 'START_TIMER'
+}
+type StopTimersAction = {
+  type: 'STOP'_TIMER
+}
+type AddTimerAction = {
+  type: 'ADD_TIMER',
+  payload: Timer,
+}
+type Action = AddTimerAction | StartTimersAction | StopTimersAction;
+
+function reducer(state: TimersState, action: Action): TimersState {
+  if (action.type === 'START_TIMER') {
+    return {
+      ...state,
+      isRunning: true
+    }
+  }
+    if (action.type === 'STOP_TIMER') {
+    return {
+      ...state,
+      isRunning: false
+    }
+  }
+  if (action.type === 'ADD_TIMER') {
+    return {
+      ...state,
+      timers: [
+        ...state.timers,
+        payload
+      ]
+    }
+  }
+
+  return state;
+}
+
+export default function TimersContextProvider({ children }: TimersProps) {
+  const [state, dispatch] = useReducer<TimersState>(reducer, initialState);
+
+  const ctx: TimersContextValue = {
+    timers: state.timers,
+    isRunning: state.isRunning,
+    addTimer(data) {
+      dispatch({ type: 'ADD_TIMER', payload: data })
+    },
+    startTimers() {
+      dispatch({ type: 'START_TIMER'})
+    },
+    stopTimers() {
+      dispatch({ type: 'STOP_TIMER'})
+    },
+  }
+
+  return <TimersContext.Provider value={ctx}>
+    {children}
+  </TimersContext.Provider>
+}
+
+
+in the app
+const timersCtx = useTimersContext()
+
+return (
+ <Button onClick={timersCtx.isRunning ? timersCtx.stopTimers : timersCtx.startTimers }></Button>
+)
+etc...
+
+
+
+UseEffect
+standard usage:
+const [remainingTime, setRemainingTime] = useState(duration * 1000) // duration from props
+const interval = useRef<number | null>(null);
+const { isRunning } = useTimersContext()
+
+if (remainingTime <= 0 && interval.current) {
+  clearInterval(interval.current);
+}
+
+useEffect(() => {
+  let timer: number;
+
+  if (isRunning) {
+    timer = setInterval(() => {
+      setRemainingTime(prev => prev - 50)
+    }, 50);
+    interval.current = timer;
+  } else if (interval.current) {
+    clearInterval(interval.current)
+  }
+
+  return () => clearInterval(timer);
+}, [isRunning])
+
+-> strict mode renders each component twice (mounted unmounted and remounted)
+
+
+
+Fetching data and Handling Responses
+
+using fetch function
+http.ts file to define a helper function to fetch data
+export async function get(url: string) {
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch data')
+  }
+
+  const data = await response.json() as unknown; -> better than any
+  return data;
+}
+
+using in App
+type RawBlogPost = {
+  id: number;
+  title: string;
+  body: string;
+}
+
+function App() {
+  const [fetchedPosts, setFetchedPosts] = useState<BlogPost[]>()
+  const [isFetching, setIsFetching] = useState(false)
+  const [error, setError] = useState<string>()
+
+  useEffect(() => {
+    async function fetchPosts() {
+      setIsFetching(true)
+
+      try {
+        const data = (await get('https://jsonplaceholder.typicode.com/posts')) as RawBlogPost[];
+
+        const blogPosts: BlogPost[] = data.map(rawPost => ({
+          id: rawPost.id,
+          title: rawPost.title,
+          text: rawPost.body
+        }))
+        
+        setFetchedPosts(blogPosts);
+
+      } catch(err) {
+        if (error instanceof Error) {
+          setError(err.message)
+        } else {
+          setError(err)
+        }
+      }
+
+      setIsFetching(false)
+    }
+
+    fetchPosts();
+  }, []);
+
+  let content : ReactNode
+
+  if (error) {
+    content = <ErrorMessage text={error} />
+  }
+  if (fetchedPosts) {
+    content = <BlogPosts posts={fetchedPosts} />
+  }
+
+  if (isFetching) {
+    content = <p>Loading...</p>
+  }
+
+  return (
+    <main>
+      {content}
+    </main>
+  )
+  
+}
+
+
+
+Using Redux 
+
+npm i @reduxjs/toolkit react-redux @types
+
+global state storage +dispatch actions that triggers function to reducers that update the state
+
+export const store = configureStore({
+  reducer: {
+    cart: cartSlice.reducer
+  }
+})
+
+cart-slice.ts
+type CartItem = {
+  id: string
+  title: string
+  price: number
+  quantity: number
+}
+type CartState = {
+  items: CartItem []
+}
+
+const initialState: CartState = {
+  items: []
+}
+export const cartSlice = createSlice({
+  name: 'cart',
+  initialState,
+  reducers: {
+    addToCart(state, action: PayloadAction<{id: string, title: string, price: number}>) {-> PayloadAction from redux toolkit
+      // we are allowed with redux tool kit to mutate the state
+      const itemIndex = state.items.find(item => item.id === id)
+
+      if (itemIndex >= 0) {
+        state.items[itemIndex].quantity++
+      } else {
+        state.items.push({ ...action.payload, quantity: 1})
+      }
+    }, 
+    removeFromCart(state, action) {...}
+  }
+})
+
+
+// make the store available to the app
+function App() {
+  return (
+    <Provider store={{store}}>
+      <main>
+      ...
+      </main>
+    </Provider>
+  )
+}
+
+cart-slice.ts
+export const { addToCart, removeFromCart } = cartSlice.actions
+
+then in a component
+const dispatch = useDispatch() -> better to create your own
+
+function handleAddToCart() {
+  dispatch(addToCart({ id, title, price })) -> will generate an action automatically
+}
+
+export type AppDispatch = typeof store.dispatch -> will be a Thunk
+let name = 'Max'
+type N = typeof name
+
+hooks.ts
+import { useDispatch } from 'react-redux';
+import { type AppDispatch } from './store'
+
+type DispatchFunction = () => AppDispatch
+
+const useCartDispatch: DispatchFunction = useDispatch
+
+and use this instead original useDispatch in app.ts
+
+
+useSelector hooks.ts
+export const useCartSelector: TypedUseSelectorHook<RootState> = useSelector; import useSelector and type TypedUseSelectorHook from 'react-redux'
+and in store.ts add:
+export type RootState = ReturnType<typeof store.getState>
+
+
+in a component
+const cartQuantity = useCartSelector((state) => state.cart.items.reduce((value, item) => value + item.quantity, 0))
+
+or 
+const cartItems = useCartSelector(state => state.cart.items)
+const dispatch = useCartDispatch()
+
+const totalPrice = cartItems.reduce((
+  (value, item) => value + item.price * item.quantity,
+  0
+))
+
+function handleAddToCart(item: CartItem) {
+  dispatch(addToCart(item))
+}
+function handleRemoveFromCart(id: string) {
+  dispatch(removeFromCart(id))
+}

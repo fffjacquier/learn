@@ -1,0 +1,2517 @@
+# Angular
+
+Storing data in a component class
+
+in the .ts file=
+import { DUMMY_USERS } from '../../data/users';
+
+const randomIndex = Math.floor(Math.random() * DUMMY_USERS.length);
+
+export class UserComponent {
+    selectedUser = DUMMY_USERS[randomIndex]
+}
+
+Binding with string interpolation:
+in the template html=
+<span>{{ selectedUser.name }}</span>
+
+Property Binding and Outputting computed values
+<img src="{{ selectedUser.avatar }}" />
+or better use property binding: 
+<img [src]="selectedUser.avatar" />
+or <img [src]="'assets/users/' + selectedUser.avatar" />
+
+Attribute binding
+<img [src]="thesrc" ...> binds the src property of the HTMLImageElement Dom object to the value stored in thesrc.
+Property binding targets the underlying DOM object property and binds that.
+
+[attr.aria-valuenow]="currentVal" 
+[attr.aria-valuemax]="maxVal">...</div>
+By adding attr in front of the attribute name you want to bind dynamically, you're "telling" Angular 
+that it shouldn't try to find a property with the specified name but instead bind the respective attribute 
+
+Using Getters for computed values
+get imagePath() {
+    return 'assets/users/' + this.selectedUser.avatar
+}
+
+Listening to events with event binding
+<button (click)="onSelectUser()">
+
+Manage state and change data
+
+  onSelectUser() {
+    const randomIndex = Math.floor(Math.random() * DUMMY_USERS.length);
+    this.selectedUser = DUMMY_USERS[randomIndex];
+  }
+
+Define Component Inputs
+@Input({ required: true}) name!: string; // the ! tells typescript not to worry
+The @Input decorator allows us to use it in the template like this:
+<app-user [name]="whatever_var">
+
+Using Input Signals
+import { input } from '@angular/core' // lowercase 
+
+avatar = input(); // the avatar prop should be an input attribute of the component
+avatar = input(''); 
+or input<string>(); // this is typescript generic type
+or  input.required<string>(); // but cannot pass an initial value then
+imagePath = computed(() => {
+    return 'assets/users/' +  this.avatar();
+})
+
+and using in the template:
+<img [src]="imagePath()" [alt]="name() />
+
+onSelectUser() {
+    this.avatar.set() // cant work, they are read only 
+}
+
+What's to use? Decorators or signals?
+When working with signals, angular manages it behind the scenes and updates UI when needed, so it can be more efficient
+The older approach is also efficient. 
+The signal approach is new to angular, so it's not much used.
+
+
+Custom Events or Outputs
+
+
+
+
+
+
+
+
+
+
+
+
+Change detection mechanism
+
+done with zone.js in angular
+A zone notifies anular about user events, expired timers and so on...
+
+
+Signals (Angular 16)
+Two approaches for updating state: 
+rely on zone and angular change detectioi mechanisme or
+using signals to notify angular about value changes and UI updates
+
+import { signal } from "@angular/core"
+selectedUser = signal(DUMMY_USERS[0]);
+
+Signals are trackable data containers
+A signal is an object that stroes a value
+angular manages subscriptions to the signal to get notified about value changes
+
+onSelectUser() {
+    this.selectedUser.set(DUMMY_USERS[1])
+}
+
+and in the template: {{ selectedUser().name }}
+
+using computed to make angular know what to rerender
+
+  imagePath = computed(() => 'assets/users/' + this.selectedUser().avatar);
+
+
+
+
+
+
+
+
+
+
+
+Components and data binding
+
+Custom Property Binding:
+<app-element *ngFor="let element of elements" [element]="element" />
+but if you want to allow a component to bind, you have to add a decorator @Input from @angular/core
+dans le component.ts : @Input('elRef') element: {...}
+dans le template html : <app *ngFor="let element in elements" [elRef]="element">
+the alias 'elRef' is not mandatory, in this case use [element] in the html
+
+Custom Event Binding:
+emit event to parent:
+on child:
+@Output() serverCreated = new EventEmitter<{name: string, content: string}>();
+onAddServer() {
+this.serverCreated.emit({
+...
+});
+}
+
+    on parent
+      <app-elt (serverCreated)="onServerAdded($event)">
+      onServerAdded being on the parent
+
+View encapsulation
+in the @Component decorator, you can add
+encapsulation: ViewEncapsulation.None to disable the scope
+(or Native or Emulate (default))
+
+Local references
+As an alternative to 2way-binding is to use a local reference (any html element)
+<input type="text" #serverName />
+it will be a reference to the element, used only in the template!
+<button (click)="onAddServer(serverName)">
+
+    onAddServer(serverNameInput: HTMLInputElement) {
+      // log serverNameInput.value
+    }
+
+Access to the dom and template with @ViewChild:
+@ViewChild('serverContentInput', {static: true}) serverContentInput: ElementRef;
+use with a localreference in the template, here the local ref should be #serverContentInput (or the component itself)
+
+    so the diff with previous case is that we do not need to pass it in the function:
+
+onAddServer() {
+// here use this.serverContentInput.nativeElement.value but do not use it to assign new value
+}
+
+Projecting content into components with ng-content
+
+    to pass children to a component, add <ng-content></ng-content> in your component where it should put the children from the parent
+
+Components Lifecycle
+
+a new comp is created, angular goes throught phases
+
+    ngOnChanges(changes: SimpleChanges) : can be exec multiple times (init, props @Input)
+    ngOnInit() lifecycle hook on initialize the component (after constructor)
+    ngDoCheck() on every change detection run (on every check, not only when something changes)
+    ngAfterContentInit() after content has been projected into view (ng-content)
+    ngAfterContentChecked()
+    ngAfterViewInit() when the component's view and child views has been initialized
+    ngAfterViewChecked()
+    ngOnDestroy()
+
+    good practice to implement the interfaces : ngOnChange & CnChanges, etc...
+
+If we use a ViewChild, in ngOnInit the this.localRef.nativeElement.textContent will render nothing
+but it will render the right value on ngAfterViewInit()
+
+Getting access to ng-content with @ContentChild
+when we want a local reference on a children that will be up with ng-content,
+we have to use @ContentChild instead of @ViewChild
+@ContentChild('myRef', { static: true }) localRef: ElementRef
+
+<p #myRef></p>
+local ref `myRef` is accessible after ngAfterContentInit()
+
+You can pass values from a parent to a child component using [property binding] in the parent and @Input() in the child.
+You can pass values from a child to a parent component using (event binding) in the parent and @Output() in the child.
+
+Directives: attributes or structural
+[ngClass]="{odd: number % 2 === 0}"
+[ngStyle]="{background: number % 2 === 0 ? 'yellow' : 'red'}"
+
+@Directive({
+    selector: '[appBasicHighlight]'
+})
+export class BasicHighlightDirective implements OnInit {
+    constructor(private elementRef: ElementRef) {}
+
+    ngOnInit() {
+        this.elementRef.nativeElement.style.backgroundCOlor = 'green';
+    }
+}
++ add BasicHighlightDirective in declarations NgModule
++ add the directive in a template
+the directive name is just a selector, so no brackets
+but not a good practice to access dom like that
+
+
+Using the renderer to build a better directive
+
+> ng g d better-highlight
+this will create only one file, no folder
+
+constructor (private eltRef: ElementRef, private renderer: Renderer2) {}
+
+ngOnInit() {
+    this.renderer.setStyle(this.eltRef.nativeElement, 'background-color', 'blue')
+}
+
+
+Using HostListener to listen to Host event
+
+in the directive, use:
+@HostListener('mouseenter') mouseover(event: Event) {
+    this.renderer.setStyle(this.eltRef.nativeElement, 'background-color', 'blue', false, false)
+}
+@HostListener('mouseleave') mouseleave(event: Event) {
+    this.renderer.setStyle(this.eltRef.nativeElement, 'background-color', 'transparent', false, false)
+}
+
+
+Using @HostBinding to avoid using the renderer
+
+@HostBinding('style.backgroundColor') backgroundColor: string = 'transparent';
+
+@HostListener('mouseenter') mouseover(event: Event) {
+    this.backgroundColor = 'blue'
+}
+
+Always prefer to use host property over @HostBinding and @HostListener
+      
+@Component({
+  selector: 'profile-photo',
+  template: `
+    <img src="profile-photo.jpg" alt="Your profile photo" />
+  `,
+  host: {
+    'role': 'slider',
+    [id]: 'id',
+    '[attr.aria-valuenow]': 'value',
+    '[tabIndex]': 'disabled ? -1 : 0',
+    '(keydown)': 'updateValue($event)',
+  },
+})
+export class CustomSlider or ProfilePhoto {
+  value: number = 0;
+  disabled: boolean = false;
+  updateValue(event: KeyboardEvent) { /* ... */ }
+  /* ... */
+}
+
+and use it this way:
+<profile-photo role="group" [id]="otherId" />
+    
+
+Referencing children with queries
+
+
+
+Binding to Directive Properties
+
+If we want the color to be dynamic,
+@Input('app-better-highlight') defaultColor: string = 'transparent'
+@Input() hightlightColor: string = 'blue'
+
+then use variable values in .ts and you can now bind to highlightColor and defaultColor
+you can reuse the selector as an input too
+<p [appBetterHighlight]="'red'" [hightlightColor]="'green'"></p>
+for a string value you can do binding like this: highlightColor="green"
+
+
+Custom structural directive
+
+the * from *ngIf does this: it create a <ng-template [nfIf]="condition"></ng-template>
+
+@Directive({
+    selector: '[appUnless]'
+})
+export class UnlessDirective {
+    @Input() set appUnless(condition: boolean) {
+        if (!condition) {
+            this.vcRef.createEmbeddedView(this.templateRef)
+        } else {
+            this.vcRef.clear()
+        }
+    }
+
+    constructor(private templateRef: TemplateRef<any>, private vcRef: ViewContainerRef) {}
+}
+
+
+Understanding ngSwitch
+
+<div [ngSwitch]="value">
+    <p *ngSwitchCase="5">5</p>
+    <p *ngSwitchCase="50">50</p>
+    <p *ngSwitchDefault="">Default</p>
+</div>
+
+
+Services
+
+for centralizing code or data storage or communication between components
+
+
+Create a log Service
+
+log.Service.ts
+export class LogService {
+    logStatus(status: string) {
+        console.log(status)
+    }
+}
+
+to use it in a component:
+
+export class MyComp {
+    constructor(private logService: LogService) {}
+}
+
+
+Hierarchical Injector
+
+@Component({
+    providers: [LogService]
+})
+...
+constructor...
+onCreate(status) {
+    this.logService.logStatus(status)
+}
+
+when we provide the service, the components and its child will receive the same instance
+when it's done in appModule, its available for all the app
+
+
+Alternative Syntax with inject()
+
+@Component(...)
+export class AccountComponent {
+  private loggingService?: LoggingService; // <- must be added
+ 
+  constructor() {
+    this.loggingService = inject(LoggingService);
+  }
+}
+
+
+How many instances of service?
+
+for the children, do not add a service in providers if already added in the parent
+
+
+Injecting service into service
+
+if two services in AppModule (provided in providers)
+to use one in the other,
+in the service that should use the other:
+use as private in the constructor, and add metadata to it with @Injectable()
+
+
+Cross components communication
+
+in the service:
+statusUpdated = new EventEmitter<string>()
+
+component 1:
+this.loggingService.statusUpdated.emit(newStatus);
+
+component 2:
+this.loggingService.statusUpdated.subscribe(
+    (status: string) => alert('new status' + status)
+)
+
+
+A Different Way Of Injecting Services
+
+Instead of adding a service class to the providers[]  array in AppModule , you can set the following config in @Injectable() :
+
+    @Injectable({providedIn: 'root'})
+    export class MyService { ... }
+
+
+Si dans le service tu veux des données private, il te faudra un event emitter pour suivre les mises à jour
+  ingredientsChanged = new EventEmitter<Ingredient[]>();
+  ingredientAdded = new EventEmitter<Ingredient>();
+
+  private ingredients: Ingredient[] = [
+    new Ingredient('Apples', 5),
+    new Ingredient('Tomato', 2),
+  ];
+
+  getIngredients() {
+    return this.ingredients.slice();
+  }
+
+  addIngredient(ingredient: Ingredient) {
+    this.ingredients.push(ingredient);
+    this.ingredientsChanged.emit(this.ingredients);
+  }
+
+et il faudra, dans le composant qui gère la liste, écouter les changements
+  ngOnInit() {
+    this.ingredients = this.shoppingListService.getIngredients();
+    this.shoppingListService.ingredientsChanged.subscribe(
+      (ingredients: Ingredient[]) => {
+        this.ingredients = ingredients.slice();
+      }
+    );
+  }
+
+
+-------
+Routing
+-------
+Define routes 
+appRoutes: Routes = [
+    { path: '' , component: FComponent }
+]
+and register them with (imports): RouterModule.forRoot(appRoutes)
+and use <router-outlet></router-outlet> where we want the component to load
+
+
+Add router links
+using a href will reload the whole app each time
+use routerLink directive <a routerLink="/"></a>
+or [routerLink]="['/users']"
+
+
+Understanding nav paths
+Use abs. paths "/", 
+using relative path ("server" or "./server") will add it to the current path
+or "../server"
+
+
+Styling active link
+routerLinkActive="cssActiveClass"
+link is marked as active if it uses the link, so home "/" or "" is always there
+to solve it: routerLinkActiveOptions="{
+    exact: true
+}"
+
+Navigate programmatically with code
+inject router: Router in constructor
+then this.router.navigate(['/servers'])
+
+
+Using relative paths in programmatic navigation
+the router link doesnot know on which route you are
+inject route: ActivatedRoute;
+this.router.navigate(['/servers'], { relativeTo: this.route})
+
+
+Passing parameters to route
+{ path: 'users/:userId', component: UserComponent }
+
+
+Fetching route parameters
+Inject the active route ActivatedRoute
+this.route.snpashot.params.userId
+
+
+Fetching reactively if component not reinstanciated
+(case of a link to update current page route with other data)
+this.paramsSubscription = this.route.params.subscribe(
+    (params: Params) => {
+        this.user.id = params.userId;
+    }
+)
+params is an Observable: easy way to subscribe to some event that may happen in the future
+
+
+angular will clean up this Observable automatically
+otherwise, you'll need to remove it on ngOnDestroy
+this.paramsSubscription.unsubscribe()
+
+
+Query parameters
+?mode=edit&debug=1
+[routerLink]="['/servers', 5, 'edit']"
+[queryParams]="{mode: 'edit', debug: 1}
+fragment="loading" -> will add #loading to the route
+
+programmatically:
+this.router.navigate([...], { queryParams: {...}}, fragment: 'loading)
+
+
+Retrieving these params 
+inject ActivatedRoute
+and on init:
+this.route.snpashot.queryParams or .fragment (not reactive)
+this.route.queryParams.subscribe()
+this.route.fragment.subscribe()
+
+
+Child routes with children
+{ path: 'servers', component: UserComponent, children: [
+        {path: ':id', component: ServerComponent },
+        {path: ':id/edit', component: EditServerComponent },
+    ]
+}
+and add a new <router-outlet> on the servers component to hold children
+
+
+Preserve the query params when you navigate
+this.router.navigate(['/servers'], { relativeTo: this.route, queryParamsHandling: 'merge' | 'preserve'})
+
+
+Redirecting and wild cards
+{ path: 'not-found', component: NotFoundComponent },
+{ path: '**', redirectTo: 'not-found' }
+** means catch all
+should be put ath the end of the routes 
+
+By default, Angular matches paths by prefix. That means, that the following route will match both /recipes  and just / 
+{ path: '', redirectTo: '/somewhere-else' } 
+To fix this behavior, you need to change the matching strategy to "full" :
+{ path: '', redirectTo: '/somewhere-else', pathMatch: 'full' } 
+
+
+Make a route Module
+app-routing.module.ts
+put your appRoutes
+@NgModule({
+    imports: [
+        RouterModule.forRoot(appRoutes)
+    ],
+    exports: [
+        RouterModule,
+    ]
+})
+
+and in app.module.ts, import AppRoutingModule
+
+
+Route Guards
+
+cases: allow access if user is logged in
+
+canActivate:
+auth-guard.service.ts
+export AuthGuard implements CanActivate {
+    canActivate(route: ActivatedRouteSnapshot,
+                state: RouterStateSnapshot): Observable<boolean> | Promise<boolean> | boolean
+}
+
+on the route: { path: '...', canActivate: [AuthGuard]... }
+
+protect the child routes only:
+CanActiveChild class and method canActivateChilde (same signature)
+
+
+Using a fake auth service
+
+
+canDeactivate
+make a custom service implementing CanDeactivate
+
+
+static data
+errorMessage in a error-page.component
+in the route def. add a data: { message: 'something bad happend'}
+ in the error comp. inject ActivatedRoute
+ngOnInit 
+-> this.errorMessage = this.route.snapshot.data['message']
+-> this.route.data.subscribe(
+    (data:Data) => {
+        this.errorMessage = data['message']
+    }
+)
+
+
+Resolving dynamic data with resolve guard
+server-resolver.service
+
+interface Server  {
+    id: number;
+    name: string;
+    status: string;
+}
+@Injectable()
+export class ServerResolver implements Resolve<Server> {
+    constructor(private serversService: ServersService) {}
+
+    resolve(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<Server> | Promise<Server> | Server {
+        return this.serversService.getServer(+route.params['id'])
+    }
+}
+and in the route : resolve: { server: ServerResolver }
+and in the comp: (oninit)
+    this.route.data.subscribe(
+        (data: Data) => { this.server = data['server'] } // server here means the one prop from the resolve
+    )
+
+
+Locations strategies
+localhost vs prod servers
+SPA on prod servers may need some config if routing not working
+RouterModule.forRoot(appRoutes, { useHash: true })
+
+
+
+-----------
+Observables
+-----------
+various data source (events, requests, ...)
+and an observer
+and in-between: handle data or error or completion
+
+rxjs@6 and rxjs-compat
+
+Build a custom one
+import { interval, Subscription } from 'rxjs'
+sub: Subscription
+ngOnInit() {
+    this.sub = interval(1000).subscribe(count => {
+        console.log(count)
+    })
+}
+they keep rolling until you unsubscribe!
+
+const customObs = Observable.create((observer) => {
+    let count = 0
+    setInterval(() => {
+        observer.next(count)
+        if (count > 2) {
+            observer.error(new Error("bad"));
+        }
+        if (count > 1) {
+            observer.complete()
+        }
+        count++
+    },1000)
+});
+
+customObs.subscribe(
+    data => console.log(data),
+    error => console.log(error),
+    () => console.log('completed'))
+
+an error cancels subscription, so no completion step
+
+Operators are magic feature of an observable:
+customObs.pipe(filter(data => data > 0), map(data => {
+    return 'do what' + data // here you enhance the data
+})), or map() and many more...
+
+so we should do the data transforms:
+customObs.pipe(...).subscribe(...)
+
+Subjects
+use it instead of EmitEmitter
+but you call next() instead of emit()
+DO not use with @Output though!
+
+
+--------------
+Handling forms
+--------------
+
+From a basic form with name and email, angular will give you
+{
+    value: {
+        name: 'jean',
+        email: 'test@ex.fr'
+    }
+    valid: true
+}
+
+2 approaches: template driven or reactive
+
+Template-driven
+
+first include FormsModule in the main module frst
+
+tell angular how the form looks like
+add ngModel on the input will tell angular this input is part of a form
+for this to work, the input needs a name <input ngModel name="username">
+
+and on form element use (ngSubmit)="onSubmit"
+<form (ngSubmit)="onSubmit(f)" #f="ngForm">
+
+props for ngform: dirty, touched, sbmitted, invalid, pristine, valid...
+
+Validation:
+you can use native like `required` or email (directive from angular)
+
+angular dynamically adds classes on inputs like ng-dirty ng-touched, ng-invalid, ng-valid...
+
+validators from angular: min, max, required, requiredTrue, email, minLength, maxLength, pattern, nullValidator, compose, composeAsync
+
+Take advantage of css angular classes:
+<button type="submit" [disabled]="!foo.valid">
+and also
+input.ng-invalid {
+    border: 1px solid red;
+}
+
+Output validation error messages
+<input #email="ngModel">
+<p *ngIf="!email.valid && email.dirty or touched">Please enter a valid email</p>
+
+
+Set default values
+<select [ngModel]="defaultQuestion" >
+
+Grouping form controls
+ngModelGroup="userData" #userData="ngModelGroup"
+and 
+<p *ngIf="!userData.valid">Invalide user data</p>
+
+Radio buttons
+<div class="radio" *ngFor="let gender of genders">
+    <label>
+    <input type="radio" name="gender" ngModel [value]="gender" required />
+    </label>
+</div>
+
+Setting and patching values
+populate an input from a button:
+yuo can use this.signupForm.setValue({...}) but you need to pass the whole values
+or this.signupForm.form.patchValue({
+    userData: {
+        username: suggestedName
+    }
+})
+
+Using form data
+use an object and rely to form value in onSubmit
+
+Resetting form
+this.signupForm.reset();
+
+
+Reactive Forms
+use a FormGroup from '@angular/forms' in component
+and import ReactiveFormsModule
+
+create a form:
+ngOnInit(): void {
+    this.signupForm = new FormGroup({
+        'username': new FormControl(null) -> in quotes to be sure it's preserved by angular
+        'email': new FormControl(null)
+        'gender': new FormControl('male')
+    })
+}
+
+Sync html and form
+add angular directives: <form [formGroup]="signupForm">
+formControlName="username" on the input (username being the one defined on formgroup with quotes)
+(or [formControlName]="'username'" but a bit overcomplicated)
+
+
+Submit the form
+<form (ngSubmit)="onSubmit()">
+onSubmit() {
+    console.log(this.signupForm.value)
+}
+
+Validations:
+FormControl(null, Validators.required)
+
+and
+<span class="help-block" *ngIf="!signupForm.get('username').valid && signupForm.get('username').touched">Enter a valid user name</span>
+
+
+this.projectForm.markAllAsTouched();
+
+There is an updateOn property which can be set to blur or submit instead of change 
+(which is the default).
+
+Reactive:
+const control = new FormControl('', { updateOn: 'submit' });
+
+Template Driven:
+<input [(ngModel)]="..." [ngModelOptions]="{ updateOn: 'submit' }" ...>
+
+
+FormGroup can be nested
+ this.signupForm = new FormGroup({
+    'userData': new FormGroup({
+        'username': new FormControl(null),
+        'email': new FormControl(null)
+    })
+
+then you need to add a formGroupName="userData" and update the conditions:
+*ngIf="!signupForm.get('userData.username').valid ...
+
+
+Array of form controls
+    getControls() {
+      return (<FormArray>this.signupForm.get('hobbies')).controls;
+    }
+*ngFor="let hobbyControl of getControls(); let i = index"
+
+or
+    get controls() {
+      return (this.signupForm.get('hobbies') as FormArray).controls;
+    }
+
+and in the template:
+*ngFor="let hobbyControl of controls; let i = index"
+
+and all in a <div formArrayName="hobbies">
+
+and loop hobbies
+    <div 
+      class="form-group"
+      *ngFor="let hobbyControl of getControls(); let i = index">
+        <input type="text" class="form-control" [formControlName]="i">
+    </div>
+
+or you can use [formGroupName] if you have a nested FormGroup
+<div class="row"
+              *ngFor="let ingredientCtrl of controls; let i = index;"
+              [formGroupName]="i"
+
+
+  getControls() {
+    return (<FormArray>this.signupForm.get('hobbies')).controls;
+  }
+
+  onAddHobby() {
+    const control = new FormControl(null, Validators.required);
+    (<FormArray>this.signupForm.get('hobbies')).push(control);
+  }
+
+
+Creating custom validators
+forbiddenNames = ['fj', 'FJ']
+
+forbiddenName(control: FormControl): {[s: string]: boolean} {
+    if (this.forbiddenNames.indexOf(control.value) {
+        return {'nameisforbidden': true}
+    })
+    return null; // should be null or an error, this is angular form way of things
+}
+add this as a validator in form control for username
+
+Using error codes
+<span class="help-block" *ngIf="!signupForm.get('username').errors['nameisforbidden']">This name is taken</span>
+
+
+Create async validator
+forbiddenEmails(control: FormControl) : Promise<any> | Observable<any> {
+    const promise = new Promise<any>((resolve, reject) => {
+        setTimeout(() => {
+            if (control.value === 'fj@fj.fr') {
+                resolve({ 'emailIsTaken': true })
+            } else {
+                resolve(null)
+            }
+        }, 1500)
+    })
+    return promise;
+}
+
+and in formGroup:
+    'email': new FormControl(null, [Validators...], [this.forbiddenEmails])
+
+
+Reacting to changes
+this.signupForm.statusChanges.subscribe(
+    (status) => console.log(status) // valid or invalid or pending
+)
+this.signupForm.valueChanges.subscribe(
+    (value) => console.log(value)
+)
+
+
+Setting and patching values on signupForm
+setValue({
+    ...
+})
+patchValue({
+    //...
+})
+reset();
+
+
+export class CustomValidators {
+    static invalidProjectName(control: FormControl): {[s: string]: boolean} {
+        if(control.value === 'Test') {
+            return {'invalidName': true}
+        }
+        return null
+    }
+
+    static asyncInvalid(control: FormControl) : Promise<any> | Observable<any> {
+        const promise = new Promise<any>((resolve, reject) => {
+            setTimeout(() => {
+                if (control.value === 'Test') {
+                    resolve({ 'invalidName': true })
+                } else {
+                    resolve(null)
+                }
+            }, 1500)
+        })
+        return promise;
+    }
+}
+
+and use CustomValidators.invalidProjectName in app
+(no need to bind then because there is no this)
+
+
+FormArray([])
+
+When navigating, we lost the added recipes because the recipe service was added on the RecipesComponent
+To fix, we should add it in the app.module.ts to make it available everywhere
+
+As of Angular 8+, there's a new way of clearing all items in a FormArray.
+(<FormArray>this.recipeForm.get('ingredients')).clear();
+
+
+
+-----
+Pipes
+-----
+
+To transform output values
+ex: {{ firstname | uppercase }}
+
+{{ started | date }}
+
+Configuring Pipes
+date:'fullDate':''... (parameters)
+
+Built in pipes
+currency, percent, json, slice, decimal, async, i18Nplural, i18nselect...
+slice:start[:end] -> check angular io Docs
+
+Chaining pipes
+{{ started | date | uppercase }} applied from left to right, order matters, here we cannot do the opposite
+
+Creating a custom pipe
+A pipe to shorten the text
+shorten.pipe.ts
+@Pipe({
+    name: 'shorten'
+})
+export class ShortenPipe implements PipeTransform {
+    transform(value: any, limit: number, anotherArg: number) {
+        if (value.lenght > limit) {
+            return value.substr(0, limit) + '...'
+        }
+        return value;
+    }
+}
+then add it into @NgModule declarations
+and use it {{ label | shorten:10 }}
+
+import { Pipe, PipeTransform } from '@angular/core';
+
+@Pipe({
+  name: 'filter'
+})
+export class FilterPipe implements PipeTransform {
+
+  transform(value: any, filterString: string, propName: string): any {
+    if (value.length === 0 || filterString === '') {
+      return value;
+    }
+
+    const result = []
+    for (const item of value) {
+      if (item[propName].toLowerCase().includes(filterString.toLowerCase())) {
+        result.push(item)
+      }
+    }
+    return result;
+  }
+
+}
+
+Pure and impure: how to fix the Filter Pipe
+if you have a filter,  and add multiple identical filter, angular doesnot re render our pipe when we update the data
+updating arrays or objects will not update the data in the filter
+but changing the filter will retrigger data
+(high perf. cost)
+
+you can force the update
+@Pipe({
+    name: 'filter',
+    pure: false -> will trigger updates but could be bad!
+})
+
+
+Understanding the Async pipe
+  appStatus = new Promise((resolve, reject) => {
+    setTimeout(() => {
+      resolve('stable')
+    }, 2000)
+  })
+
+  in the template: {{ appStatus | async }} -> otherwise it will return the promise as Object object
+
+
+
+-------------
+HTTP requests
+-------------
+
+How does angular connect to databases?
+By Sending http requests to a server (api) that gives back an http response
+
+Anatomy of HTTP request
+URL (api endpoint) /posts/1
+Http verb: POST, GET, PUT...
+Headers (metadata): {'Content-Type': 'application/json}
+Body: { title: 'dfsqsjm '}
+
+Backend Setup (firebase)
+create a realtime database
+
+add HttpClientModule in your imports array
+
+in the app:
+constructor(private http: HttpClient) {}
+
+onCreatePost(postData: { title: string, content: string }) {
+    this.http.post(
+        'https://your-ng-app.firebaseio.com/posts.json', // format requir. by firebase
+        postData
+    ).subscribe(
+        responseData => {
+            console.log(responseData)
+        }
+    )
+}
+
+http request are observable, so you must subscribe to it!
+
+
+GETTING data
+fetchPosts() {
+    this.http
+        .get(url)
+        .pipe(map(responseData => { // map from 'rxjs/operators'
+            // convert object to array
+            const postsArr = [];
+            for (const key in responseData) {
+                if (responseData.hasOwnProperty(key)) {
+                    postsArr.push({ ...responseData[key], id: key })
+                }
+            }
+            return postsArray;
+        }))
+        .subscribe(
+            posts => {
+            // posts is an object with keys / values that is transformed into array in the pipe above
+            console.log(posts)
+        }
+    )
+}
+
+Using types with the HttpClient
+.pipe(map(responseData: { [key: string]: Post } => { // Post being a type with id?, title, content
+    const postsArr: Post[] = [];
+
+or you can do:
+.get<{ [key: string]: Post }>(url)
+.pipe(map(responseData) => {
+    const postsArr: Post[] = [];
+    // more
+})
+or
+.post<{ name: string }>()
+
+Show a loading indicator
+isLoading = false
+private fetchPosts() {
+    isLoading = true
+    // requests
+
+    and isLoading = false at the end
+}
+
+Using a service
+Better to use a service for all the code related to requests
+posts.service.ts
+@Injetable({providedIn:  'root'})
+export class PostsService {
+
+    constructor(private http: HttpClient) {}
+
+    createAndStorePost(title, content) {
+        ...code to postdata and subscribe
+    }
+
+    fetchPosts() {
+
+    }
+}
+
+and in the component, use the service
+sol1: use a Subject 
+or
+sol2: don't subscribe in the service
+in the service:  (if there is a reason to care about the answer in the subscribe)
+    fetchPosts() {
+        return this.http
+            .get<{ [key: string]: Post}>(url)
+            .pipe(map(responseData => {
+                const postsArray: Post[] = []
+                // ...
+                return postsArray
+            }))
+    }
+in the component (if there is a reason to care about the answer in the subscribe)
+    ngOnInit() {
+        this.isFetching = true;
+        this.postsService.fetchPosts().subscribe(
+            posts => {
+                this.isFetching = false;
+                this.loadedPosts = posts;
+            }
+        )
+    }
+
+Delete request
+service:
+deletePosts() {
+    return this.http.delete(url-delete-all-posts)
+}
+comp:
+this.postsService.deletePosts().subscribe(() => {
+    this.loadedPosts = []
+})
+
+Handling errors
+sol 1: pass a second argument to subscribe (callback error)
+plus handle the error message in the template
+
+sol 2/ when you don't subscribe in the component
+use a Subject in the service
+error = new Subject<string>() // from 'rxjs'
+
+and use it anywhere in components
+errorSub: Subscription
+this.errorSub = this.postsService.error.subscribe(errorMessage => this.error = errorMessage)
++ handle unsubscribe in ngOnDestroy
+
+Using catchError in pipe
+pipe(
+    map(),
+    catchError(errorRes => {
+        return throwError(errorRes)
+    })
+)
+
+Setting Headers
+all request have an optional second arg obj., { headers: new HttpHeaders({ 'Custom-Header': 'hello' })}
+
+Add Query params
+firebase: add params in this second opitonal obj, params: new HttpParams().set('key', 'value')
+
+or you can do it by adding in the url
+or use 
+let searchParams = new HttpParams();
+searchParams = searchParams.append('debug', true)
+searchParams = searchParams.append('edit', 1)
+
+Types of Responses
+If you want the full response instead of responseData
+this.http.post(
+    url,
+    postData,
+    {
+        observe: 'response' (default is 'body')
+    }
+).subscribe(resp => {
+    // resp will be the full http response with status, ok, body, headers, etc...
+})
+
+you can use observe: 'events' 
+this.http
+    .delete('url'), { observe: 'events' })
+    .pipe(
+        tap(event => {
+            if (event.type === HttpEventType.Sent) { // 0
+                //update UI
+            }
+            if (event.type === HttpEventType.Response) { // response is 4, HttpEventType.DownloadProgress, ...
+                console.log(event.body)
+            }
+        })
+    )
+
+You can change the response body type
+this.http
+    .delete('url'), { observe: 'events', responseType: 'text' }) // instead of json
+
+
+
+Interceptors
+auth-interceptors.ts
+export class AuthInterceptorService implements HttpInterceptor {
+    intercept(request: HttpRequest<any>, next: HttpHandler) {
+        console.log('intercepting the request')
+        return next.handle(request);
+    }
+}
+
+in @NgModule({
+    providers: [
+        { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptorService, multi: true }
+    ]
+})
+
+Manipulate request objects
+the request obj. is immutable, here req, we have to create a new one with clone()
+intercept(req: HttpRequest<any>, next: HttpHandler) {
+        console.log('intercepting the request')
+        const modifiedReq = req.clone({headers: req.headers.append('Auth', 'xyz')})
+        return next.handle(modifiedReq);
+    }
+
+Response interceptors
+return next.handle(modifiedReq).pipe(map(...)) or .pipe(tap(event => {
+    if (event.type === HttpEventType.Response) {
+        console.log(event.body)
+    }
+}))
+
+Multiple Interceptors
+when you have more than one service intercepting functions,
+The order matters in providers array
+the first one will occur first and so on
+
+
+example for a data-storage.service.ts:
+
+@Injectable({ providedIn: 'root' })
+export class DataStorageService() {
+    
+    constructor(private http: HttpClient, private recipeService: RecipeService) {} // import HttpClientModule in NgModule imports
+
+    storeRecipes() {
+        // either pass the recipes or inject the recipe service in the constructor
+        const recipes = this.recipeServce.getRecipes()
+
+        this.http
+            .put('firebase-url/recipes.json', recipes) //will override existing
+            .subscribe(
+                response => console.log(response)
+            )
+    }
+
+    fetchRecipes() {
+        this.http
+            .get<Recipe[]>('firebase-url/recipes.json')
+            .subscribe(recipes => {
+                console.log(recipes)
+                this.recipeService.setRecipes(recipes)
+            })
+    }
+}
+
+when you use put, firebase will not use a unique id but index as key
+
+in the recipe service
+setRecipes(recipes: Recipe[]) {
+    this.recipes = recipes;
+    this.recipesChanged.next(this.recipes.slice())
+}
+
+If we have a possible prop that could be empty, you'll need to
+transform the response (here ingredients could be empty)
+    fetchRecipes() {
+        this.http
+            .get<Recipe[]>('firebase-url/recipes.json')
+            .pipe(map(recipes => { // map from 'rxjs/operators'
+                return recipes.map(recipe => { // map from js
+                    return { ... recipe, ingredients: recipe.ingredients ? recipe.ingredients : [] }
+                })
+            }))
+            .subscribe(recipes => {
+                console.log(recipes)
+                this.recipeService.setRecipes(recipes)
+            })
+    }
+
+Resolving data before loading
+if we try to access /recipes/2 before we get the recipes from db
+we'll get an error, you can use a guard or a resolver
+
+recipes.resolver.service.ts
+
+@Injectable({ providedIn: 'root' })
+export class RecipesResolverService implements Resolve<Recipe[]> { // from '@angular/router
+
+    constructor(
+        private dataStorageService: DataStorageService,
+        private recipeService: RecipeService
+    ) {}
+
+    resolve(route: ActivatedRoute, state: RouterStateSnapshot) {
+        const recipes = this.recipeService.getRecipes();
+        if (recipes.length) {
+            return recipes;
+        } else {
+            return this.dataStorageService.fetchRecipes();
+            // we do not subscribe here because the resolver does it automatically
+        }
+    }
+}
+
+the tap operator allow to exec some code without altering the result
+so we can tweak the fetchRecipes() to        
+    return this.http
+        .get<Recipe[]>('firebase-url/recipes.json')
+        .pipe(map(recipes => { // map from 'rxjs/operators'
+            return recipes.map(recipe => { // map from js
+                return { ... recipe, ingredients: recipe.ingredients ? recipe.ingredients : [] }
+            })
+        }),
+        tap(recipes => {
+            this.recipeService.setRecipes(recipes)
+        }))
+        // and remove the subscribe from here to put it in the component who makes the call
+
+then we need to apply the resolver into the routes
+
+    { path: ':id', component: RecipeDetailComponent, resolve: [RecipesResolverService] },
+    { path: ':id/edit', component: RecipeEditComponent, resolve: [RecipesResolverService] },
+
+
+--------------
+Authentication
+--------------
+
+handle signin, signout, errors, tokens
+store, expires, auth Guards
+set right headers (BehaviorSubject<User>(null))
+
+restful api is stateless, the idea is send auth data to server , server gives back a token
+that the client stores and reuses
+
+In firebase, to test, change the rules:
+{
+    "rules": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+    }
+}
+then enable auth for email/password on firebase console
+
+Prepare the signup auth 
+firebase will give us an endpoint (like (https://googleapis.com/identifytoolkit/v3/relyingparty/signupNewUser?key=<WEB_API_KEY>))
+and a request payload with email password and returnSecureToken
+the response payload will have an idToken, kind, email, refreshToken, expiresin, localId
+
+auth.service.ts
+
+interface AuthResponseData {
+    idToken: string
+    kind: string
+    email: string
+    refreshToken: string
+    expiresin: string
+    localId: string
+}
+
+@Injectable(...)
+export class AuthService {
+    constructor(
+        private http: HttpClient
+    ) {}
+
+    signup(email, password) {
+        return this.http
+            .post<AuthResponseData>('url', {email, password, returnSecureToken: true} )
+            .pipe(
+                catchError(errorResp => {
+                    let errorMessage = "Unknown error'
+                    if (!errorRes.error || !errorRes.error.error) {
+                        return throwError(errorMessage)
+                    }
+                    switch(errorResp.error.error.message) {
+                        case 'EMAIL_EXISTS':
+                            errorMessage = 'Email already taken by another account'
+                    }
+                    return throwError(errorMessage)
+                })
+            )
+    }
+}
+
+in the component
+this.authService
+    .signup(email, password)
+    .subscribe(
+        respData => { log(respData) },
+        errorMsg => console.error(errorMsg)
+    )
+
+Logging
+in AuthResponseData, add a registered?: boolean 
+signin(email, password) {
+    return this.http
+        .post<AuthResponseData>('url/verifyPassword?key=apikey', {email, password, returnSecureToken: true} )
+        .pipe(
+            catchError(errorResp => {
+                let errorMessage = "Unknown error'
+                if (!errorRes.error || !errorRes.error.error) {
+                    return throwError(errorMessage)
+                }
+                switch(errorResp.error.error.message) {
+                    case 'INVALID_PASSWORD': // EMAIL_NOT_FOUND
+                        errorMessage = 'Password or email are/is incorrect'
+                        break
+                    // ...other cases
+                }
+                return throwError(errorMessage)
+            })
+            // all this can be moved into a private func
+            // catchError(this.handleError)
+        )
+}
+
+you can refactor with:
+const authObs: Observable<AuthResponseData>
+
+if (this.loginMode) {
+    authObs = this.authService.login(email, password);
+} else {
+    authObs = this.authService.signup(email, password);
+}
+authObs.subscribe(
+    respData => { 
+        log(respData);
+        this.isLoading = false;
+    },
+    errorMsg => {
+        console.error(errorMsg)
+        this.error = errorMessage;
+        this.isLoading = false;
+    }
+)
+
+Storing user data
+create a UserModel user.model.ts
+export class User {
+    constructor (
+        public email, 
+        public id: string, 
+        private _token: string, 
+        private _tokenExpDate) {
+    }
+
+    get token() {
+        if (!this._tokenExpDate || new Date() > this._tokenExpDate) {
+            return null
+        }
+        return this._token
+    }
+}
+
+in the auth service, store the user as a Subject<User>
+and in signup and signin, add a tap operator
+tap is allowed to execute some operations but not to change the response
+
+    .pipe(
+        catchError(this.handleError),
+        tap(responseData => {
+            const {email, localId, idToken, expiresin} = responseData;
+            this.handleAuth(email, localId, idToken, +expiresin)
+        })
+    )
+
+    private handleAuth(email: string, userId: string, token: string, expiresIn: number) {
+        const expDate = new Date(new Date().getTime() + expiresIn * 1000);
+        const user = new User(email, userId, token, expDate);
+        this.user.next(user);
+    }
+
+Adding token to the requests
+in authService, use a BehaviorSubject 
+user = new BehaviorSubject<User>(null)
+The difference between Subject and BehaviorSubject being it gives access to the previously subscribed value even if thery
+hadn't subscribed at the point of time the value was emitted
+
+and in our data storage service
+fetchRecipes() {
+    return this.authService.user
+        .pipe(
+            take(1), // take one value from the observable and unsubscribe
+            exhaustMap(user => { // it waits the user observable to complete
+                // return a new obs, and replace with the inner one
+                return this.http
+                    .get<Recipe[]>(
+                        'firebase-url/recipes.json',
+                        { params: new HttpParams().set('auth', user.token)}    
+                    )
+            }),
+            map(recipes => { // map from 'rxjs/operators'
+                return recipes.map(recipe => { // map from js
+                    return { 
+                        ... recipe, 
+                        ingredients: recipe.ingredients ? recipe.ingredients : [] 
+                    }
+                })
+            }),
+            tap(recipes => {
+                this.recipeService.setRecipes(recipes)
+            })
+        )
+}
+
+and subscribe on component
+
+
+Using token with interceptors as an alternative
+auth-interceptor.ts
+@Injectable()
+export class AuthInterceptorService implements HttpInterceptor {
+    constructor(
+        private authService: AuthService
+    )
+    intercept(req: HttpRequest<any>, next: HttpHandler) {
+
+        return this.authService.user
+            .pipe(
+                take(1), // take one value from the observable and unsubscribe
+                exhaustMap(user => {
+                    // not needed for signup and signin (no token)
+                    if (!user) {
+                        return next.handle(req)
+                    }
+                    // add user.token to the request
+                    const modifiedReq = req.clone({
+                        params: new HttpParams().set('auth', user.token)
+                    })
+                    return next.handle(modifiedReq)
+                })
+            );
+    }
+}
+and add in NgModule.providers:
+{provide: HTTP_INTERCEPTORS, useClass: AuthInterceptorService, multi: true }
+
+and in data storage of course, remove the exhaustMap and the take
+
+
+Logout
+in auth.service
+logout() {
+    this.user.next(null);
+    this.router.navigate(['/auth']);
+}
+
+
+How to persist the token when reloading the app?
+use local storage:
+localStorage.setItem('userData', JSON.strinfify(user))
+
+in auth service, add also:
+autoLogin() {
+    const ud = JSON.parse(localStorage.getItem('userData'));
+    if (!ud) {
+        return;
+    }
+
+    const loadedUser = new User(ud.email, ud.id, ud._token, new Date(ud._tokenExpDate) )
+
+    if (loadedUser.token) {
+        this.user.next(loadedUser)
+    }
+}
+
+and use it on init app
+ngOnInit() {
+    this.authService.autoLogin();
+}
+
+Autologout
+private tokenExpTimer: number
+logout() {
+    ...
+    localStorage.removeItem('userData'); // or .clear()
+    if (this.tokenExpTimer) {
+        clearTimeout(this.tokenExpTimer)
+    }
+    this.tokenExpTimer = null
+}
+
+autoLogout(expirationDuration: number) {
+    // manage a timer to logout after some time
+    this.tokenExpTimer = setTimeout(() => {
+        this.logout();
+    }, expirationDuration);
+}
+
+where do we need to call autologout?
+in handleAUth() and autoLogin()
+after this.user.next(user), add
+this.autoLogout(expiresIn * 1000)
+
+in autoLogin:
+    if (loadedUser.token) {
+        this.user.next(loadedUser);
+        const expirationDuration = new Date(userData._tokenExpirationDate).getTime() - new Date().getTime();
+        this.autoLogout(expirationDuration);
+    }
+
+
+Adding an Auth Guard:
+prevent the visit on recipe if user not logged in
+
+auth.guard.ts (service)
+
+@Injectable({ providedIn: 'root' })
+export class AuthGuard implements CanActivate {
+  constructor(private authService: AuthService, private router: Router) {}
+
+  canActivate(
+    route: ActivatedRouteSnapshot,
+    router: RouterStateSnapshot
+  ):
+    | boolean
+    | UrlTree // allow redirect user when route are blocked
+    | Promise<boolean | UrlTree>
+    | Observable<boolean | UrlTree> {
+    return this.authService.user.pipe(
+      take(1), // make sure the map below happens only one time
+      map(user => {
+        const isAuth = !!user;
+        if (isAuth) {
+          return true;
+        }
+        return this.router.createUrlTree(['/auth']); 
+      })
+      // or rather than urltree 
+      // But can lead to race conditions
+      // tap(isAuth => {
+      //   if (!isAuth) {
+      //     this.router.navigate(['/auth']);
+      //   }
+      // })
+    );
+  }
+}
+
+and in the routes:
+{
+    path: 'recipes',
+    component: RecipesComponent,
+    canActivate: [AuthGuard],
+    // ...
+}
+
+
+*----------------------*
+Load a dynamic component
+------------------------
+
+Can be loaded programmatically with *ngIf and @Input @Output
+for ex. for an alert component with a backdrop and close btn
+This is the approach to favor!
+
+or
+Use dynamic component loader (added to the code via code)
+  @ViewChild(PlaceholderDirective) alertHost: PlaceholderDirective;
+
+  constructor(
+    private authService: AuthService,
+    private router: Router,
+    private componentFactoryResolver: ComponentFactoryResolver
+  ) {}
+
+  private showErrorAlert(message: string) {
+    // const alertCmp = new AlertComponent(); // won't work in angular
+    const alertCmpFactory = this.componentFactoryResolver.resolveComponentFactory(
+      AlertComponent
+    );
+
+    const hostViewContainerRef = this.alertHost.viewContainerRef;
+    hostViewContainerRef.clear();
+
+    const componentRef = hostViewContainerRef.createComponent(alertCmpFactory);
+
+    componentRef.instance.message = message;
+
+    this.closeSub = componentRef.instance.close.subscribe(() => {
+      this.closeSub.unsubscribe();
+      hostViewContainerRef.clear();
+    });
+  }
+
+
+helper directive as PlaceholderDirective
+import { Directive, ViewContainerRef } from '@angular/core';
+
+@Directive({
+  selector: '[appPlaceholder]'
+})
+export class PlaceholderDirective {
+  constructor(public viewContainerRef: ViewContainerRef) {} // this gives you access at the place where you use the directive
+}
+
+add it in the component
+<ng-template appPlaceholder></ng-template>
+
+// for older versions of angular < 9, there is something with entryComponents
+in NgModule, add entryComponents with component dyn. created:
+entryComponents: [ AlertComponent ]
+
+
+
+---------------
+Angular Modules
+---------------
+
+To group blocks of code (components, directives, services)
+
+AppModule
+with @NgModule()
+declarations: components, pipes, directives
+imports: import other module into this one
+providers: all services needed for the app (or use @Injectable({ 'providedIn': 'root'}))
+bootstrap: [AppComponent] // one root component
+entryComponents: [] // for dyn.created Components
+exports: for modules that needs to be imported in main app
+
+every module works on its own
+
+You can split your app into Feature Modules (Products, Orders...)
+
+When creating a RecipeModule
+put in declarations all the comp. and directives / pipes
+export all components too!!
+and import RecipeModule in AppModule
+
+then to avoid errors, we need to import the needed modules
+imports: [ CommonModule, RouterModule, ReactiveFormsModule]
+here we import CommonModule because BrowserModule is already imported in AppModule
+
+we can also move the routes for recipes
+recipes-routing.module.ts:
+const routes: Routes = [
+    ...my recipe routes
+]
+@NgModule({
+    imports: [RouterModule.forChild(routes)]
+    exports: [RouterModule]
+})
+
+and in recipes.module, add RecipeRoutingModule to imports
+
+but then, we can remove the exports of all components in RecipeModule
+
+
+Shared modules for shared components
+shared.module.ts
+@NgModule({
+    declarations: [
+        AlertComponent,
+        ...
+    ],
+    imports: [
+        CommonModule,
+    ],
+    exports: [
+        AlertComponent,
+        ...
+        CommonModule, // !!
+    ]
+})
+export class SharedModule {}
+
+then in other modules replace CommonModule with SharedModule
+and remove the component added here where they were before
+
+You can't define a component twice in 2 modules
+
+in app module, import SharedModule too
+
+
+The Core Module
+Can be used to gather the services sometimes
+then you can remove the providers: [] in app module and import CoreModule in imports
+
+Make an Auth feature module
+auth.module.ts
+@NgModule({
+    declarations: [
+        AuthComponent,
+    ],
+    imports: [
+        SharedModule,
+        FormsModule,
+        RouterModule.forChild({ path: 'auth', component: AuthComponent})
+    ]
+})
+then clean app.module.ts and app-routing accordingly
+
+
+Lazy Loading
+this is an optimization 
+Each route can have its own module.
+The idea is to only load the code that belongs to the requested route
+
+How to lazyload?
+in RecipeModule, having the routes defined separately
+
+remove the path: 'recipes' for recipes: '' in recipes routing
+
+and in the app routing module, add a recipes path like this:
+{ path: 'recipes', loadChildren: './recipes/recipes.module#RecipesModule' }
+or
+{ path: 'recipes', loadChildren: () => import('./recipes/recipes.module').then(m => m.RecipesModule) }
+
+and then in the app module, remove the RecipesModule import, otherwise, you'll get errors
+
+
+Preload lazyloaded modules:
+in app module
+    RouterModule.forRoot(appRoutes, { preloadingStrategy: PreloadAllModules })
+
+
+
+Services and modules
+service in AppModule available app-wide (should be default)
+otherwise you can have strange bugs, like using different instances of the same service
+So if using a SharedService, the imported services this can happen, so  you need a strong reason to do that
+
+
+
+----------
+Deployment
+----------
+
+Prep: 
+- use and check env. variables
+- test code, and modules and loazy loading
+- build the app: 
+    > ng build --prod (--prod only for older versions of angular) (uses ahead-of-time compilation)
+- deploy build artifacts (generated files) to static host (html css js)
+
+Using env. variables:
+you have an environments folder with 2 files: a .ts and a .dev.ts
+put your api keys in these files
+export const environment = {
+    production: false,
+    firebaseAPIKey: '...',
+}
+
+in the auth sercice, import { environment } from '../../environments/environment'
+
+Building:
+ng build: compiles everything to js css and html, assets
+This will be in a dist folder
+
+To deploy you can pick firebase Hosting with firebase cli
+check the Docs
+use Hosting -> it will give you the deploy url
+You also need to configure your server (amazonS3, ...)
+
+
+
+---------------------
+Standalone Components
+---------------------
+Building Components without @NgModule
+
+Added in angular version 14, lot of boilerplate due to modules
+It's a way to get rid of that
+
+
+Building a Standalone component
+a regular component with a standalone: true in the Component decorator
+you should no longer declare the component in any module declarations then but in the imports of the module
+
+For custom directives or pipes using the standalone, 
+you can turn the directive into a standalone
+or you can add the imports: [SharedModule] in the standalone component to get them
+(supposing they are in the SharedModule)
+
+Turn the directive into a standalone
+add a standalone: true and remove from all modules
+and use an imports:[CustomDirective] in the component using it
+
+A standalone Root component
+nd remove from all modules
+and use an imports:[AppComponent] in the component using it
+and change 
+platformBrowser.bootstrapModule(AppModule) 
+to
+bootstrapApplication(AppComponent) // from '@angular/platform-browser'
+
+How to handle services?
+bootstrapApplication(AppComponent, {
+    providers: [//... al services]
+}) // from '@angular/platform-browser'
+or use the @Injectable({ providedIn: 'root'})
+
+
+What about routing?
+keeping routing modules:
+router-outlet and routerLink are of no use without Modules
+
+bootstrapApplication(AppComponent, {
+    providers: [
+        //... all services,
+        importProvidersFrom(AppRoutingModule), // from '@angular/core'
+    ]
+})
+
+
+And Lazy-loading?
+route.ts
+export const routes: Route[] = [
+    // dashboard route component
+    {
+        path: 'about',
+        // component: AboutComponent,
+        loadComponent: () => import('./pathtoaboutcomponent').then(mod => mod.AboutComponent)
+    }
+]
+
+in app routing module:
+{ 
+    path: 'dashboard',
+    loadChildren: () => import('./dashboard/route').then(mod => mod.routes)
+}
+and use imports: [RouterModule] in dashboard component if it has some routerLinks in it
+
+
+
+---------------
+Angular Signals
+---------------
+from angular 16, a different way of detecting changes
+
+data is changed by zone-based change detection
+where changes are detected automatically and UI is updated automatically
+But performance is affected and bundle size is increased
+
+With Signals, no automatic change detection, you tell angular when data changes
+Angular updates only the parts of UI where the data (signal) is used
+
+Create a new signal
+counter = signal(0);
+
+Updating a signal
+increment() {
+    this.counter.update((prevCounter) => prevCounter + 1)
+}
+
+Read & output value
+in the template:
+{{ counter() }}
+
+
+set, update and mutate
+this.counter.set(2) // no function here
+this.counter.set(this.counter() + 1)
+mutate was removed from angular 17
+
+actions: string[] = [] -> actions = signal<string[]>([])
+this.actions.update(prev => [...prev, newValue])
+<li *ngFor="let action of actions()">{{ action }}</li>
+
+Still in progress...
+
+The computed function
+doubleCount = computed(() => this.counter() * 2 )
+it computes values depeding on other Signals
+{{ doubleCount() }}
+
+The effect function
+It's to run code when a signal value changes
+effect(() => {
+    console.log();
+})
+
+
+-----------------
+Angular Universal
+-----------------
+Bad seo or None at all by default & slow page load
+
+Angular Universal -> gives a pre-rendered of initial page of the SPA
+
+angular 16: ng add @nguniversal/express-engine
+angular 17+: ng add @angular/ssr
+
+ng new projectname --ssr: will add ssr by default
+
+it adds an extra attr for routing
+@NgModule (app routing)
+imports: [RouterModule.forRoot(routes, {
+    initialNavigation: 'enabledBlocking'
+})]
+
+it adds an app.server.module.ts
+@NgModule({
+    imports: [
+        AppModule,
+        ServerModule, // from '@angular/platform-server'
+    ],
+    bootstrap: [AppComponent]
+})
+export class AppServerModule {}
+
+it adds a main.server.ts at the root of .src/
+which export the AppServerModule
+
+and a server.ts with express code
+and some dedicated config
+
+
+Server side code:
+an express app is exported so it can be used by serverless functions
+(in server.ts)
+
+it adds some scripts dev:ssr, serve:ssr, build:ssr, prerender
+> npm run serve:ssr (instead of ng serve)
+
+Integrating API endpoints
+server.get('/api/**', (req, res) => { });
+server.post('/api/**', (req, res) => {//... });
+be sure the routes do not clash with your angular routes
+
+Deploying universal app
+Now you can't deploy to a static server
+because now you have code that can be exec on server
+
+so you'll need a nodejs provider Hosting
+
+start with: > npm run build:ssr
+
+the dist folder will need to be uploaded to server with package.json and angular.json
+on server: npm install + npm run serve:ssr to start the server
+
+ one important implication: You MUST NOT use any browser-only APIs like document.querySelector()  in your Angular code! 
+Simply because it will execute on the server and there, such APIs are not available.
+
+
+
+
+----------
+Animations
+----------
+
+npm install --save @angular/animations
+
+in Component decorator, add:
+  animations: [
+    trigger('divState', [
+        state('normal', style({
+            'background-color': 'red',
+            transform: 'translateX(0)'
+        })),
+        state('highlighted', style({
+            backgroundColor: 'purple',
+            transform: 'translateX(50px)'
+        }))
+    ])
+  ]
+
+in the class:
+    state = 'normal'
+
+and in the template:
+    <div [@divState]="state" style="width: 100px; height: 100px"></div>
+
+Switching between states 
+onAnimate() {
+    this.state = 'highlighted'
+}
+
+add: transition('normal => highlighted', animate(300) )
+or 'normal' <=> 'highlighted'
+ transition('shrunk <=> *', animate(500)) // * = from any state
+
+
+Transitions 
+with animate, you have more control
+animate(400, style({
+    borderRadius: '50px'
+}))
+to animate smoothly: replace the animate() with an array
+transition("shrunken <=> *", [
+    style({
+        backgroundColor: 'orange'
+    }),
+    animate(2000, style({
+         borderRadius: '50px'
+    })),
+    animate(500)
+])
+
+The void state (animate an item when created or removed)
+trigger('list1', [
+      state('in', style({
+        opactity: 1,
+        transform: 'translateX(0)'
+      })),
+      transition('void => *', [
+        style({
+          opacity: 0,
+          transform: 'translateX(-100px)'
+        }),
+        animate(300)
+      ]),
+      transition('* <=> void', [
+        animate(300, style({
+          transform: 'translateX(-100px)',
+          opacity: 0
+        }))
+      ])
+    ]),
+
+and in the template!
+<li
+    class="list-group-item"
+    [@list1]=""
+    (click)="onDelete(item)"
+    *ngFor="let item of list">
+    {{ item }}
+</li>
+
+
+Using keyframes animations
+transition('void <=> *', keyframes([ // from @angular/animations
+    style({
+        transform: 'translateX(-100px),
+        opacity: 0,
+        offset: 0,
+    }),
+    style({
+        transform: 'translateX(-50px),
+        opacity: 0.5,
+        offset: 0.3,
+    }),
+    style({
+        transform: 'translateX(-20px),
+        opacity: 1,
+        offset: 0.8,
+    }),
+    style({
+        transform: 'translateX(0),
+        opacity: 1,
+        offset: 1,
+    }),
+])) 
+
+Grouping Transitions
+use the group() method. Instead of doing the first then the second and so on,
+it will start them at the same time, with each its duration
+transition('void <=> *', [
+    group([
+        animate(300, style({
+            color: 'red'
+        })),
+        animate(800,style({
+            transform: 'translateX(-100px),
+            opacity: 0,
+        }) )
+    ])
+])
+
+
+Using animations callbacks
+in the template:
+<div (@divState.start)="animationStarted($event)"
+    (@divState.done)="animationEnded($event)">
+
+in the class:
+animationStarted(event) { // event is a AnimationTransitionEvent
+    // do anything
+}
+
+Check animation are in the appCOnfig (provideAnimations())
+or BrowserAnimationModule is in NGModules imports
+
+
+----------
+Unit tests
+----------
+how to use testing in angular
+
+Setup created by cli:
+app.Component.spec.ts
+
+Running test in cli:
+ng test
+
+beforeEach(() => {
+    TestBed.configureTestingModule({
+        declarations: [UserComponent]
+    })
+})
+
+it('should create the app', () => {
+    let fixture = TestBed.createComponent(UserComponent);
+    let app = fixture.debugElement.componentInstance;
+    expect(app).toBeTruthy();
+})
+
+Testing a service
+it('should use the user name in the service', () => {
+    let fixture = TestBed.createComponent(UserComponent);
+    let app = fixture.debugElement.componentInstance;
+    let userService = fixture.debugElement.injector.get(UserService);
+    fixture.detectChanges();
+    expect(userService.user.name).toEqual(app.user.name);
+})
+
+it('should display the username if the user is logged in', () => {
+    let fixture = TestBed.createComponent(UserComponent);
+    let app = fixture.debugElement.componentInstance;
+    app.isLoggedIn = true;
+    fixture.detectChanges();
+    let compiled = fixture.debugElement.nativeElement;
+    expect(compiled.querySelector('p').textContent).toContain(app.user.name);
+})
+
+it('should not display the username if the user is not logged in', () => {
+    let fixture = TestBed.createComponent(UserComponent);
+    let app = fixture.debugElement.componentInstance;
+    
+    let compiled = fixture.debugElement.nativeElement;
+    expect(compiled.querySelector('p').textContent).not.toContain(app.user.name);
+})
+
+
+Simulate async tasks
+it('should not fetch data successfully if not called async', () => {
+    let fixture = TestBed.createComponent(UserComponent);
+    let app = fixture.debfixture.detectChanges();ugElement.componentInstance;
+    let dataService = fixture.debugElement.injector.get(DataService);
+    let spy = spyOn(dataService, 'getDetails')
+        .and.returnValue(Promise.resolve('Data'));
+    fixture.detectChanges();
+    expect(app.data).toBe(undefined);
+})
+
+it('should fetch data successfully if called async',async( () => {
+    let fixture = TestBed.createComponent(UserComponent);
+    let app = fixture.debfixture.detectChanges();ugElement.componentInstance;
+    let dataService = fixture.debugElement.injector.get(DataService);
+    let spy = spyOn(dataService, 'getDetails')
+        .and.returnValue(Promise.resolve('Data'));
+    fixture.detectChanges();
+    fixture.whenStable().then(() => { // all async is finished
+        expect(app.data).toBe('Data');
+    });
+}))
+
+
+Using fakeAsync and tick instead of async() and whenStable()
+
+it('should fetch data successfully if called async', fakeAsync( () => {
+    let fixture = TestBed.createComponent(UserComponent);
+    let app = fixture.debfixture.detectChanges();ugElement.componentInstance;
+    let dataService = fixture.debugElement.injector.get(DataService);
+    let spy = spyOn(dataService, 'getDetails')
+        .and.returnValue(Promise.resolve('Data'));
+    fixture.detectChanges();
+    tick(); // all async is finished
+    expect(app.data).toBe('Data');
+}))
+
+
+Isolated and non-isolated tests
+A reverse pipe should be an isolated test
+reverse.pipe.spec.ts
+describe('Reverse Pipe', () => {
+    it('shuold create a reverse pipe', () => {
+        let reversePipe = new ReversePipe();
+        expect(reversePipe.transform('hello')).toEqual('olleh');
+    })
+})
+
+Otherwise, use TestBed, async, etc...
+
+
+---
+Cli
+---
+angular as a platform
+
+Understand projects and config files
+
+    ng new:
+        --help
+        --create-application
+        --dry-run (reports activity without writing out results)
+        --inline-style or --inline-template
+        --prefix (-p)
+        --routing
+        --skip-tests
+        --skip-install
+        --strict
+        
+    .editorconfig => for all editors to get same format
+    browserslist: 
+	the browser you want to support on prod
+    karma.conf.js for tests config
+
+    tsconfig.app.json -> extends the tsconfig.json to compile your app
+    tsconfig.json -> for ts compiler
+	you can add strict mode in compilerOptions to true
+	you have an angularCompilerOptions
+
+    ng help => to see what command exists
+	ng generate --help
+	ng serve --help
+	ng lint will use tslint.config
+	ng build
+	ng update
+	ng deploy
+	...
+
+    angular.json	
+	to manage your project config
+
+	
+	"newProjectRoot": "projects",
+	"projects": { // one entry per project
+	"defaultProject": "angular-config"
+	"projectType": "application" or "library"
+	"sourceRoot": "src"
+	"prefix": "app"
+	"architect": { "build": -> all build options
+		... "serve": for ng serve options
+		... "test": ...
+		"extract-i18n": ...
+		"configurations": {
+			"production": ...
+			"staging": ...
+		ng build --configuration=staging
+
+	"schematics": {}
+        Schematics are blueprints for commands like ng generate 
+	or ng add (add libs and capabilities to a project)
+	or ng update (update projects and libs)
+	third parties can add custom schematics
+
+	Not a trivial thing to do
+
+	angular material adds prebuild components to your app
+	ng add @angular/material
+	It adds packages and also update some files like app.config.ts, angular.json, index.html or styles.Css
+
+	ng generate
+	you can add your own schematics using it: ng generate @angular/material:nav main-nav
+	it will add the nav from angular material as a component
+
+	ng update
+	This command will analyze package.json and suggest what to do
+
+
+Builders
+	Schematics are to add things in the project
+	Builders (ng build, ng test, ng lint) perform certain build steps
+	Some perform certain deployment steps (ng deploy)
+
+	Automation command you can customize
+
+	ng deploy -> can be used with vercel/netlify/firebase/github pages/amz S3
+	ng add @angular/fire (for firebase)
+	maybe you need npm i -g firebase-tools && firebase login in terminal
+	then ng deploy
+	it will give you a preview url
+
+Browserlist && differential loading
+	angular will auto prefix and check what polyfills may be needed depending on browsers targeted
+	will add polyfills (bigger bundle of course)
+	Diff.loading will give you both -> 2 versions in dist for each file (polyfills.js, main.js...)
+	
+	You can tell what browsers you need to support in browserlist
+	You can have one like this:
+	ng generate config browserslist
+	
+	check https://github.com/browserslist/browserslist#queries
+
+	polyfills.ts: sometimes, depending on angular versions, you may need to uncomment some imports
+	like for animations in safari
+
+	
+Managing multiple projects in one folder
+	ng generate application backend will add a new projects folder with a new backend angular project in it
+	then ng serve --project=backend
+
+	not ideal!
+	solution: ng new angular-shop --create-application=false
+	this will create only config files and angular node modules
+	then create the first app
+	ng generate application backend
+	ng generate application frontend
+	now every project will have its place in projects folder
+	much cleaner
+
+	ng generate library designLib: it will add the lib in the projects
+	the difference: you'll have a package.json file, a ng-package.json file, a lib folder in the src folder
+	and a public-api.ts
+	
+
+
+
+----------------
+Angular Elements
+----------------
+Allow to turn your components into web components
+
+npm install @angular/elements
+
+only usable in angular projects
+allows you to dynamically insert html code holding ang components after the angular app
+has been compiled and loaded
+
+in an app if you want to load a custom component (app-alert with a prop message AlertComponent)
+	content = null;
+
+	constructor() {
+	  setTimeout(() => {
+	    this.content = "<app-alert message='rendered dynamically'></app-alert>"
+	  }, 1000);	  
+	}
+	<div [innerHTML]="content"></div>
+
+	This will not display anything, nothing gets renderd, because not recognized as html element
+	Because the compilation has already been done
+	Angular does not compiled the code in this.content
+
+	sol:
+	import { createCustomElement ] from '@angular/elements'
+
+	Maybe you'll need (depending on angular version prior to 14) to add 
+	@webcomponents/custom-elements too in package.json, rxjs-compat
+	and some tweaks in polyfills
+
+	
+	constructor(injector: Injector, domSanitizer: DomSanitizer) {
+ 	  const AlertElement = createCustomElement(AlertComponent, {injector});
+	  customElements.define('my-alert', AlertElement); // this is pure js
+	  setTimeout(() => {
+	    this.content = "<app-alert message='rendered dynamically'></app-alert>"
+	  }, 1000);	  
+	}
+	And you have to add in the NgModule the entryComponents: [AlertComponent]
+	And you need to sanitize it
+	this.content = domSanitizer.bypassSecurityTrustHtml("<app-alert message='rendered dynamically'></app-alert>");
+
+
+-------
+Offline
+-------
+pwa: progressive web apps 
+
+Setup:
+from https://angular.io/guide/service-worker-getting-started
+
+ng new angular-pwa --no-strict
+ng add @angular/pwa
+ng build
+npx http-server -p 8080 -c-1 dist/angular-pwa/browser
+this will allow to load http://localhost:8080
+
+angular.json
+	in "configurations.production", adds 
+              "serviceWorker": "ngsw-config.json"
+app-config.json
+    it adds 
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: !isDevMode(),
+      registrationStrategy: 'registerWhenStable:30000',
+    }),
+
+ngsw-config.json file
+	"assetGroups": [
+	  {
+	    "name": "app" -> targets all static files
+	    "installMode": "prefetch"
+	...
+	  {
+	    "name": "assets" -> targets resources not immediately needed (fonts, images)
+	    "installMode": "lazy",
+
+	With the value "prefetch", it retrieves the new version immediately, while "lazy" would let the SW fetch it only if requested again. 
+	"updateMode": "prefetch" specifies how the SW has to behave if a new version of the resource is detected. 
+	"updateMode": "lazy" works only if installMode is "lazy"
+

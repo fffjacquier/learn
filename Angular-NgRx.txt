@@ -1,0 +1,215 @@
+NgRx
+a state management system
+
+Basics: state, reducers and selectors
+Working with NgRx effects
+
+You need a Store to put your states/Data
+
+component can read data from the store via selectors
+component can change the data in the store by dispatching actions in reducers
+the reducer will contain the change logic
+effects also for certains actions (http request)
+
+Install and Setup
+npm install @ngrx/store
+or ng add @ngrx/store
+
+in app module, 
+imports: [
+  ...
+  StoreModule.forRoot({}, {})
+]
+or if you use standalone, 
+bootstrapApplication(AppComponent, {
+  providers: [provideStore()] // from '@ngrx/store
+})
+
+create a reducer
+const counterReducer = createReducer(initialState, {})
+
+and in StoreModule.forRoot({
+  counter: counterReducer,
+  auth: authReducer,
+  ...
+})
+or 
+providerStore({
+  counter: counterReducer,
+  ...
+})
+
+or alternative way of creating reducer:
+export function counterReducer(state = initialState) {
+  // update state here
+  return state;
+}
+
+Reading data from the store with a selector
+in ts:
+  count$: Observable<number> // convention to add a dollar at the end of observables
+
+  constructor(
+    private store: Store<{ 'counter': number}>
+  ) {
+    this.count$ = store.select('counter')
+  }
+in the template read the observable with an async pipe
+{{ count$ | async }}
+and import the AsyncPipe in the ts file in imports: [AsyncPipe]
+
+
+Actions 
+counter.actions.ts
+const incrementAction = createAction(
+  '[Counter] Increment', // the type
+)
+
+use the action in the reducer
+import { createReducer, on } from "@ngrx/store";
+
+export const counterReducer = createReducer(
+  initialState,
+  on(incrementAction, (state) => {
+    // produce a new value or state
+    return state + 1;
+  })
+);
+
+and in the component:
+export class CounterControlsComponent {
+  constructor(
+    private store: Store
+  ) {}
+
+  increment() {
+    this.store.dispatch(incrementAction())
+  }
+
+  decrement() {
+    this.store.dispatch(decrementAction())
+  }
+}
+
+Attaching data to actions
+createAction has a second arg with the props function (from @ngrx/store)
+createAction(
+  '[Counter] Decrement',
+  props<{ value: number}>()
+)
+
+to extract it:
+in reducer,
+  on(decrementAction, (state, action) => state + action.value))
+
+in the component, when dispatching
+  this.store.dispatch(decrementAction({value: 2}))
+
+
+alternate way 
+in the reducer
+
+export function counterReducer(state = initialState, action: CounterActions | Action) {
+  if (action.type === '[Counter] Increment') {
+    return state + (action as IncrementAction).value 
+  }
+  return state;
+}
+
+in the actions
+import { Action } from '@ngrx/store'
+
+export const INCREMENT = '[Counter Increment]'
+export class IncrementAction implements Action {
+  readonly type = INCREMENT
+
+  constructor(public value: number) {}
+}
+export type CounterActions = IncrementAction | DecrementAction;
+
+and initiate it with new IncrementAction({value: 1}) in the dispatch()
+
+
+counter.selectors.ts
+export const selectCounter = (state: {counter: number }) => state.counter;
+export const selectDouble = createSelector(
+  selectCounter,
+  (counter) => counter * 2
+)
+
+and use it  in a component
+this.count$ = store.select(selectCounter)
+this.doubleCount$ = store.select(selectDouble)
+
+
+Effects / Side effects:
+for http request / localstorage / log
+
+avoid side effects in reducers
+reducer should stay synchronous / simple, focused
+
+install: ng add @ngrx/effects
+
+Define an effect
+counter.effect.ts
+import { Actions, createEffect, ofType } from "@ngrx/effects";
+import { decrementAction, incrementAction } from "./counter.actions";
+import { tap } from "rxjs";
+
+@Injectable()
+export class CounterEffects {
+  saveCount = createEffect(() => {
+    this.actions$.pipe(
+      ofType(incrementAction, decrementAction),
+      // or ofType('[Counter] Increment', ...)
+      tap((action) => {
+        console.log(action)
+        localStorage.setItem('count', action.value.toString())
+      })
+    );
+  }, { dispatch: false });
+
+  constructor(private actions$: Actions) { }
+}
+
+in older versions, there was no createEffect, it was like this:
+@Injectable()
+export class CounterEffects {
+  @Effect() // from '@ngrx/effects'
+  saveCount = 
+    this.actions$.pipe(
+      ofType(incrementAction, decrementAction),
+      // or ofType('[Counter] Increment', ...)
+      tap((action) => {
+        console.log(action)
+        localStorage.setItem('count', action.value.toString())
+      })
+
+
+  constructor(private actions$: Actions) { }
+}
+
+and in provideEffects([CounterEffects])
+or EffectsModule.forRoot([CounterEffects])
+
+
+Using store data in effects
+    this.actions$.pipe(
+      ofType(incrementAction, decrementAction),
+      // or ofType('[Counter] Increment', ...)
+      withLatestFrom(this.store.select(selectCounter)),
+      tap(([action, counter]) => {
+        console.log(action)
+        localStorage.setItem('count', counter.toString())
+      })
+    );
+
+1.
+map, mergeMap and switchMap, exhaustMap and concatMap will transform the passed value and return an Observable for the result.
+
+2.
+mergeMap and switchMap, exhaustMap and concatMap will additionally "flatten" an Observable of Observables to an Observable of normal values, by subscribing internally to the inner Observables.
+
+3.
+switchMap will additionally unsubscribe from previous inner Observables each time a new value of the outer Observable arrives.
+
