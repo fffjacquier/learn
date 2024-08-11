@@ -1,5 +1,9 @@
 # Angular
 
+Start new project
+ng new my-app
+
+
 Storing data in a component class
 
 in the .ts file=
@@ -17,7 +21,7 @@ in the template html=
 
 Property Binding and Outputting computed values
 <img src="{{ selectedUser.avatar }}" />
-or better use property binding: 
+or better use property binding:
 <img [src]="selectedUser.avatar" />
 or <img [src]="'assets/users/' + selectedUser.avatar" />
 
@@ -25,10 +29,10 @@ Attribute binding
 <img [src]="thesrc" ...> binds the src property of the HTMLImageElement Dom object to the value stored in thesrc.
 Property binding targets the underlying DOM object property and binds that.
 
-[attr.aria-valuenow]="currentVal" 
+[attr.aria-valuenow]="currentVal"
 [attr.aria-valuemax]="maxVal">...</div>
-By adding attr in front of the attribute name you want to bind dynamically, you're "telling" Angular 
-that it shouldn't try to find a property with the specified name but instead bind the respective attribute 
+By adding attr in front of the attribute name you want to bind dynamically, you're "telling" Angular
+that it shouldn't try to find a property with the specified name but instead bind the respective attribute
 
 Using Getters for computed values
 get imagePath() {
@@ -39,62 +43,19 @@ Listening to events with event binding
 <button (click)="onSelectUser()">
 
 Manage state and change data
-
   onSelectUser() {
     const randomIndex = Math.floor(Math.random() * DUMMY_USERS.length);
     this.selectedUser = DUMMY_USERS[randomIndex];
   }
 
-Define Component Inputs
-@Input({ required: true}) name!: string; // the ! tells typescript not to worry
-The @Input decorator allows us to use it in the template like this:
-<app-user [name]="whatever_var">
-
-Using Input Signals
-import { input } from '@angular/core' // lowercase 
-
-avatar = input(); // the avatar prop should be an input attribute of the component
-avatar = input(''); 
-or input<string>(); // this is typescript generic type
-or  input.required<string>(); // but cannot pass an initial value then
-imagePath = computed(() => {
-    return 'assets/users/' +  this.avatar();
-})
-
-and using in the template:
-<img [src]="imagePath()" [alt]="name() />
-
-onSelectUser() {
-    this.avatar.set() // cant work, they are read only 
-}
-
-What's to use? Decorators or signals?
-When working with signals, angular manages it behind the scenes and updates UI when needed, so it can be more efficient
-The older approach is also efficient. 
-The signal approach is new to angular, so it's not much used.
-
-
-Custom Events or Outputs
-
-
-
-
-
-
-
-
-
-
-
 
 Change detection mechanism
-
-done with zone.js in angular
+> done with zone.js in angular
 A zone notifies anular about user events, expired timers and so on...
 
 
 Signals (Angular 16)
-Two approaches for updating state: 
+Two approaches for updating state:
 rely on zone and angular change detectioi mechanisme or
 using signals to notify angular about value changes and UI updates
 
@@ -116,6 +77,1500 @@ using computed to make angular know what to rerender
   imagePath = computed(() => 'assets/users/' + this.selectedUser().avatar);
 
 
+Define Component Inputs
+@Input({ required: true}) name!: string; // the ! tells typescript not to worry
+The @Input decorator allows us to use it in the template like this:
+<app-user [name]="whatever_var">
+
+Using Input Signals
+import { input } from '@angular/core' // lowercase
+
+avatar = input(); // the avatar prop should be an input attribute of the component
+avatar = input('');
+or input<string>(); // this is typescript generic type
+or  input.required<string>(); // but cannot pass an initial value then
+imagePath = computed(() => {
+    return 'assets/users/' +  this.avatar();
+})
+
+and using in the template:
+<img [src]="imagePath()" [alt]="name() />
+
+onSelectUser() {
+    this.avatar.set() // cant work, they are read only
+}
+
+What's to use? Decorators or signals?
+When working with signals, angular manages it behind the scenes and updates UI when needed, so it can be more efficient
+The older approach is also efficient.
+The signal approach is new to angular, so it's not much used.
+
+
+Custom Events or Outputs
+in user component:
+-> declare a select variable with Output
+  // @Output() select = new EventEmitter(); or EventEmitter<string>()
+  select = output<string>();
+-> add a method to emit the event
+  onSelectUser() {
+    this.select.emit(this.id());
+  }
+    (used in template: <button (click)="onSelectUser()"> )
+-> in the parent holding the user component:
+    in the template you can now use the output:
+        <app-user (select)="onSelectUser($event)"></app-user>
+        select is the name of the output in user component
+        using () to indicate it's listening the event (event binding)
+        $event is a special angular to get the parameters
+
+    in the ts file:
+          onSelectUser(id: string) {
+            console.log('user id:', id);
+          }
+
+
+Create a configurable component
+
+> ng g c tasks --skip-tests
+
+
+Outputting Lists
+angular 17
+@for(user of users)
+@for(user of users; track user.id)
+
+
+Outputting conditional content
+angular 17
+@if (selectedUser) {
+} @else {}
+
+for older versions:
+<li *ngFor="let user of users"></li>
+structural directive (*ngFor): change the dom
+You need then to import NgFor from '@angular/common'
+
+*ngIf="selectedUser; else fallback"
+<ng-template #fallback></ng-template>
+also need to unlock it by importing NgIf
+
+
+Dynamic css styling with class bindings
+template:
+    <button [class.active]="selected()"
+ts:
+    selected = input.required<boolean>();
+
+parent component:
+      <app-user
+        [user]="user"
+        (select)="onSelectUser($event)"
+        [selected]="user.id === selectedUser?.id"
+      ></app-user>
+
+
+
+Two-way binding:
+use ngModel directive with [(ngModel)]
+this will need the import of :
+  imports: [FormsModule],
+
+Directives dont have templates
+
+Two way binding with signals
+enteredTitle = signal('');
+
+<form (ngSubmit)="createTask()">
+
+
+<ng-content></ng-content> to handle children in a component
+
+
+Transform data with pipes (output transformers)
+<time>{{ task.dueDate | date : "short" }}</time>
+
+
+Services
+Good practrice to keep component as lean as possible.
+Manage data with services, not components.
+
+class TasksService {
+    use private var and getters setters
+
+}
+
+Services comes with Dependency Injection
+You tell angular you need such an instance and angularcreates the instance once and tw can reuse it
+use in the constructor:
+
+constructor(tasksService: TasksService) {}
+
+you must declare the service as injectable
+@Injectable({ providedIn: 'root' })
+(for most cases)
+
+Alternative to use constructor(tasksService),
+you can do
+private tasksService = inject(TasksService)
+and import TasksService and inject from (@angular/core)
+
+
+Using localStorage for data storage
+localStorage.getItem('tasks')
+
+
+---------
+Module 2: Working with Modules (historic reasons)
+---------
+until now we worked with standalone components, but you can use Angular Modules for grouping components
+Standalone components are the recommended way
+They make components available for other modules
+
+Use Modules
+instead of doing "imports: [Compoent1, Component2...]
+create a app.module.ts
+@NgModule({
+    declarations: [AppComponent],
+})
+export class AppModule {
+}
+but here AppComponent is standalone, so error.
+So remove standalone: true in AppComponent
+The error imports is only for standalone, so remove them too
+
+Now we have to bootstrap the app with modules, bootstrapApplication works with standalone components
+in main.ts, use:
+import { platformBrowserDynamic } from '@angular/platform-browser-dynamic'
+platformBrowserDynamic().bootstrapModule(AppModule);
+
+Then add a bootstrap in @NgModule
+@NgModule({
+    declarations: [AppComponent],
+    bootstrap: [AppComponent],
+})
+
+now angular doesnot know the app-tasks component, and others comp.
+so we should add all components used in AppComponent in declarations
+then same issue with standalone components
+you can add an imports: [] and  register them (for standalone components)
+
+also if bootstrapping with Modules, we should import BrowserModule from '@angular/platform-browser'
+and put in the imports.
+
+
+
+Declare and export components
+Shared Modules
+
+remove the standalone and imports,
+check the components imported,
+add them in the declarations or root app
+
+Use imports: [BrowserModule] only for the bootstrapped app
+otherwise you should import CommonModule
+
+
+When using signals with ngModel you don't need to call it
+[(ngModel)]]="mysignal" not "mysignal()" bec. nModel handles signals
+
+
+
+
+// Advanced
+
+When and how to split into components?
+
+Separation of concerns: one component should only do one thing.
+for ex. a header, and items dashboard: data, viz, list of tickets
+It's a trade-off, granularity vs simplicity (code colocation)
+
+
+When building a custom component Angular ignores the content in the tags
+We need to tell angular where to put it: with the <ng-content></ng-content> instruction
+A placeholder for wrapped content
+
+
+
+
+Extending tag elements
+
+Like a button with icons for ex.
+If we copy our markup and paste in our new component, we'll have app-button in the markup and the button too
+so we have unnecessary duplication component in the page
+To have a leaner DOM, we want to extend while keeping all capabilities
+
+Instead focus of having just the content
+in your component, change the selector 'app-button' to an attribute selector '[appButton]'
+Or '.button' or 'button[appButton]' or 'button.button'
+
+Multiple ng-content
+Add a special attr <ng-content select=".icon" />
+
+also you can use <span ngProjectAs="icon">🧊</span>
+
+Define content projection fallback
+<span class="icon">
+  <ng-content select="icon">
+    ➡️ (default icon)
+  </ng-content>
+</span>
+
+Create reusable component for a form
+<p>
+  <label>{{ label() }}</label>
+  <ng-content select="input, textarea" />
+</p>
+
+you can also add multiple selectors separating by a comma
+selectors='button[appButton], a[appButton]'
+
+
+Understanding view encapsulation
+styled tags in ng-content is not working
+angular cares only about what is in the template
+
+so you can disable the scoping of the css
+in @Component({
+    ...,
+    encapsulation: ViewEncapsulation.None
+})
+other values: Emulated (def), ShadowDom or None
+
+
+For the css button, we have no button element in the template
+since this is what we want (extends)
+so we want to access the Host element (here the app-control tag)
+use in the css instead of button => :host
+
+
+The Host Element is in the dom and is the selector
+<app-control>
+    <p class="control">
+        <label>
+        </label>
+        <input>
+    </p>
+</app-control>
+If you remove the p you avoid an unnecessary tag but you loose the class
+
+if viewencapusaltion is None, :host in css wil not work
+
+or you can add the control class on the <app-control> tag
+
+or in control component use the host property
+encapsulation :...,
+host: {
+    class: 'control'
+}
+this will add the class prop to the component instance
+
+
+
+Interacting with Host Elements via @HostListener and @HostBinding
+@HostBinding('class') className = 'control';
+className should be bound to class here and you do not use the host: {} seen before
+(this way is for bacckward compat)
+
+@HostListener('click') onClick() { ...} to bind a method to an event
+or
+host: {
+    '(click)': 'onClick()
+}
+
+onClick() {
+    console.log("click")
+}
+
+
+Accessing Host elements programmatically
+for ex. when we click on something log some host element
+
+=> you can inject value in the component
+with the constructor or inject() function
+
+private el = inject(ElementRef)
+ElementRef is a class which defines a reference to an element in the page
+
+this had a nativeElement prop with the infos on the host
+
+
+Class bindings: add classes conditionnally
+[class.status]="currentStatus === 'offline'"
+
+other ways to do it
+[class]="{
+    status: true,
+    'status-online': currentStatus === 'online',
+    'status-offline': currentStatus === 'offline',
+    'status-unknown': currentStatus === 'unknown',
+}"
+
+you can do this to styles too
+[style]="{
+    'font-size': '24px'
+    or fontSize
+}"
+or for one prop [style.fontSize]="'64px'"
+
+
+
+
+Lifecycle hooks:
+constructor, ngOnInit
+
+Good practice: keep constructor lean, only do init values
+for else, prefer using ngOnInit
+ngOnInit: component inputs are done, available
+
+Easy to introduce a typo, that's why it's reco to use:
+implements OnInit {}
+this will force you to use the right methods defined for the interface
+
+
+ngDoCheck when angular detects changes that can lead to UI update
+very often called, be careful
+
+ngAfterContentInit, ngAfterContentChecked, ngAfterViewInit, ngAfterViewChecked
+the view is the template and the elements inside
+the content is the content projected into a view with ng-content
+(checked is for check detection)
+
+ngOnDestroy
+invoke right before the component is removed
+
+alternative:
+private destroyRef = inject(DestroyRef)
+// in ngOnInit:
+this.destroyRef.onDestroy(() => {
+    clearInterval(this.interval)
+})
+
+
+Working with Templates variables
+
+For forms, you can use an alternative to [(ngModel)] two way data binding
+=> store the element in a template variable:
+#titleInput
+this creates a template variable available
+(ngSubmit)="onSubmit(titleInput)"
+the type being HTMLInputElement
+
+or directly the value:
+(ngSubmit)="onSubmit(titleInput.value)"
+
+if you place it on angular component, it would store the angular component instance not the DOM element
+
+
+
+Access to template elements with ViewChild
+First add a template var, for ex on a form
+<form (ngSubmit)="onSubmit(value1, form: HTMLFormElement)" #form></form>
+then in the onSubmit you can access form.reset()
+
+If you don't want to pass form as an argument like above, you can with @ViewChild
+
+in the component class
+@ViewChild() form: ElementRef;
+to select element in the template and make them available in the class
+ViewChild needs a  selector (string, class name of a component) to store it.
+if string, you can't pass a css class
+@ViewChild('form') -> here should match the name of the template variable
+
+
+@ViewChild('form') private form?: ElementRef<HTMLFormElement>;
+ElementRef is a generic type
+Add a question mark too because it does exist until ng has initialized the template
+
+and in the submit handler:
+    this.form?.nativeElement.reset();
+this.form is the ElementRef, so we need to access the nativeElement first
+
+if you need to select multiple child, use @ViewChildren() (array of buttons or elementRefs)
+
+Using the viewchild signal (ng 17.3)
+private form = viewChild<ElementRef<HTMLFormElement>>(ButtonComponent or 'form')
+and
+this.form()?.nativeElement.reset()
+or viewChild.required<ElementRef<HTMLFormElement>>('form')
+Using this allows to access in ngOnInit (rather than ngAfterViewInit for the Decorator)
+
+
+ViewChild vs ViewContent
+if using ng-content in a template, you cant use ViewChild
+because the projected content is not part of the template
+
+  @ContentChild('input') private control?: ElementRef<
+    HTMLInputElement | HTMLTextAreaElement
+  >;
+
+
+there is also a signal: contentChild<ElementRef<INPUT or TEXTAREA>>('input')
+
+
+
+AfterRender and AfterNextRender
+You should use them in the constructor() }
+For our control component, could be useful to use it to know when something changes anywhere in the app
+for ex manually manipulate the DOM only on the browser side, for example to get coordinates or block sizes
+
+afterNextRender is used for one-time initialisation, such as for third-party libraries or APIs that only
+work on the browser side, for example charts, or for browser-only APIs.
+or using the browser’s built-in API is ResizeObserver and IntersectionObserver
+
+@ViewChild('content') private _contentRef!: ElementRef;
+  private _resizeObserver: ResizeObserver|null = null;
+  constructor() {
+    afterNextRender(() => {
+      this._resizeObserver = new ResizeObserver(() => {
+        console.log('Content was resized');
+      });
+      this._resizeObserver.observe(this._contentRef.nativeElement);
+    });
+  }
+  ngOnDestroy() {
+    this._resizeObserver?.disconnect();
+    this._resizeObserver = null;
+  }
+
+if you need to manually read or write any layout data, such as size or location, you should use afterRender.
+The purpose of this function is to synchronise with the DOM and it is called after every change detection cycle that follows.
+
+
+Signal feature:
+currentStatus = signal<'offline' | 'online' | 'unknown'>('offline')
+
+later
+this.currentStatus.set('online')
+and this.currentStatus()
+
+if using a signal in a template, angular will handle it
+if used in the constructor angular does not setup a subscription here
+
+to solve this, you cén use effect() function in te constructor
+constructor() {
+    effect(() => {
+        log(this.currentStatus())
+    })
+}
+
+
+Cleanup signal effect:
+
+effect((onCleanup) => {
+  const tasks = getTasks();
+  const timer = setTimeout(() => {
+    console.log(`Current number of tasks: ${tasks().length}`);
+  }, 1000);
+  onCleanup(() => {
+    clearTimeout(timer);
+  });
+});
+
+
+@for Helpers
+
+when using @for(ticket of tickets; track ticket.id) you can have @empty {} after for the case the array is empty
+
+also know if this is the first item in the @for
+{{ $first }} same for $last, $count, $odd
+for angular 17+ otherwise $ngFor
+
+
+Update a signal value
+2ways:
+    this.detailsVisible.set(!this.detailsVisible());
+or
+    this.detailsVisible
+    (wasVisible) => !wasVisible);
+
+
+Configuring component Inputs
+you can assign an alias,
+or a transform : () => {}
+
+For outputs, you can only use an alias for outside of the comp.
+alias are nevertheless source of confusion, so not recommended
+
+
+Two-way binding
+with template variables, it works fine
+
+Or use ngModel directive
+Like this:
+enteredTitle = ''
+enteredText = ''
+
+[(ngModel)]="enteredTitle"
+& remove the template vars
+
+onSubmit() {
+    this.addticket.emit({title: this.enteredTitle, text: this.enteredText})
+    // reset
+    this.enteredTitle = ''
+    this.enteredText = ''
+}
+
+Custom 2way binding
+@Input() size!: {width: string, height: string}
+@Output() sizeChange = new EventEmitter<{width: string, height: string}>()
+
+onReset() {
+    this.sizeChange.emit({
+        width: '200', height: '100'
+    })
+}
+and in the app template :
+<app-rect [(size)]="rectSize"></app-rect>
+rectSize being an object defined in the parent
+
+or use a model signal
+size = model.required<{width: string, height: string}>();
+//(an use size() in the template)
+onReset() {
+    this.size.set({
+        width: '200', height: '100'
+    })
+}
+
+
+
+
+Directives -- deep dive
+
+2 types: attribute and structural directives
+
+What are directives?
+enhancements for elements (extra behavior or settings can be added)
+like ngModel to enhance an input element
+
+Directive have no template!
+Components are directives with a template
+
+attr directive: ngModel
+struct directive: ngIf
+<p *ngIf=""></p>: the * should be added for structural directive
+it changes the structure of the dom
+NgIf should be imported in the class
+
+Starting with custom directives
+ask the user on links if they really want to leave the setItem
+
+to listen for the click event in the directive, it's best to use the host
+@Directive({
+    ...
+    host: {
+        '(click)': 'onConfirmLeavePage()'
+    }
+})
+export class MyDirective {
+    onConfirmLeavePage(event: MouseEvent) {
+        const wantstoleave = window.confirm("do you think i am sexy?")
+        if (wantstoleave) return;
+
+        event.preventDefault();
+    }
+}
+
+Custom Directive: use Inputs
+add a query param on click + confirm
+
+queryParam = input('myapp', { alias: 'appSafeLink' });
+the alias allows you to use the directive attr as the input
+appSafeLink="whaterver" instead of appSafeLink and queryParam="whatever"
+
+const address = (event.target as HTMLAnchorElement).href;
+(event.target as HTMLAnchorElement).href = address + '?from=' + this.queryParam();
+
+for our link, to access the host element:
+private hostElementRef = inject<ElementRef<HTMLAnchorElement>>(ElementRef)
+
+and to use it:
+const address = this.hostElementRef.nativeElement.href
+
+
+
+Build a structural directive
+based on user status
+<p appAuth="admin">admin</p>
+<p appAuth="user">user</p>
+<p appAuth="guest">guest</p>
+
+@Directive({
+  selector: '[appAuth]',
+  standalone: true,
+})
+export class AuthDirective {
+  userType = input.required<Permission>({ alias: 'appAuth' });
+
+  private authService = inject(AuthService);
+
+  constructor() {
+    effect(() => {
+      if (this.authService.activePermission() === this.userType()) {
+        console.log('showElement');
+      } else {
+        console.log('do not show element');
+      }
+    });
+  }
+}
+
+whatever children you put in there is not rendered on screen by default
+<ng-template appAuth="admin">
+    children
+</ng-template>
+It gives you to prepare some markup that should evventually be shown
+
+structural directive always needs ng-template
+(the * is syntactic sugar to ng-template)
+
+then we need to inject a TemplateRef in the class
+private templateRef = inject(TemplateRef)
+
+and you also need to inject
+private viewContainerRef = inject(ViewContainerRef);
+
+templateRef gives access to the template
+ViewContainerRef to the place in the dom where the template is been used
+
+this.viewContainerRef.createEmbeddedView(this.templateRef)
+=> takes the content and render it where the directive is used
+
+(children Not displayed by default)
+
+
+
+  <!-- <ng-template appAuth="admin">
+    <p>Admin only</p>
+  </ng-template> -->
+  same as:
+  <p *appAuth="'admin'">Admin Only</p>
+
+note the double pair of quotes because it's evaluated
+
+
+Host directives and composition
+
+for ex. a log directive on elements
+instead of adding them in the html un peu partout as attribute
+use in the component class decorator for the app-auth component:
+hostDirectives: [LogDirective]
+(No effect on structural directives, you'll have to add them manually in the html)
+
+
+
+Pipes
+
+To transform the way data is displayed on screen (values):
+currency, json, case, date, number, percent, async etc...
+
+import the DateType in the component (@angular/common)
+{{ currentDate | date }} // => 'Apr 27, 2023'
+{{ currentDate | date:'medium' }}
+
+DecimalPipe
+{{ temp | number:'1.1-2' }}
+
+
+Build a custom Pipe
+add the temperature symbol (c or F) or convert values
+
+implements PipeTransform
+all pipes needs a transform method, used by angular in the template
+transform(value:any, ...args: any[]) {
+    return value + ' - transformed';
+}
+
+Configurable Pipes
+the 1st param is always the value
+transform(value: string | number, inputType: 'cel' | 'fah', outputType?: 'cel' | 'fah') {
+
+Chaining pipes
+chain a temperature pipe and a number pipe
+
+{{ temperature | number:'1.1-2' | temp:'fah':'cel' }}
+this can need some adjustments in the types
+
+This approach can have limits
+
+A Sorting Pipe
+You can use it in a @for
+@for (temperature of historicTemperatures | sort:'desc'; track temperature) {
+      <li (click)="onReset($index)">{{ temperature }}</li>
+      }
+
+When clicking on item of our sorted pipe, it does not change it
+ng caches the return values,
+if you try to override one value in the array/object, the arr/obj does not change
+you must update the array on one value, you need to override the whole array
+
+    const nextTemps = [...this.historicTemperatures];
+    nextTemps[index] = 0;
+    this.historicTemperatures = nextTemps;
+
+or use the pure: false property on Pipe decorator: this disables the cache
+
+use pure: false very time data change & we need to updae the pipe whe
+
+
+if the position of element matters, using an index is not a good idea
+you'll need a better index value (unique)
+so pipe could not be the best way for Sorting
+but operating on the raw data directly
+
+changing behavior and adding functionality: pipe probably not to right choice
+
+
+
+
+Services & Dependency Injection
+
+Services allow you to share data and logic across the app
+Centralized services injected in components
+
+@Injectable({ providedIn: 'root' })
+export class TaskService {
+  tasks = signal<Task[]>([]);
+
+  addTask(taskData: { title: string; description: string }) {
+    const newTask: Task = {
+      ...taskData,
+      id: Math.random().toString(),
+      status: 'OPEN',
+    };
+    this.tasks
+    (oldTasks) => [...oldTasks]);
+  }
+}
+
+How not to provide a service
+
+using in a constructor with new TasksService()
+Major pb: we'll have different instances of the service for each component
+
+ng DI comes into play to solve This
+
+Dependency Injection
+Components can request services instances from angular
+
+angular can inject platform, envt, module and element
+
+private tasksService: TasksService;
+
+constructor(tService: TasksService) {
+    this.tasksService = tService;
+}
+
+shorter way:
+constructor(private tasksService:TasksService)
+or
+  private tasksService = inject(TaskService);
+
+
+export class TaskService {
+  private tasks = signal<Task[]>([]);
+
+  allTasks = this.tasks.asReadonly();
+
+}
+
+
+Outsourcing
+if you need to filter the results in the service, you can use a computed value
+
+  private tasksService = inject(TaskService);
+  private selectedFilter = signal<string>('all');
+
+  tasks = computed(() => {
+    switch (this.selectedFilter()) {
+      case 'open':
+        return this.tasksService
+          .allTasks()
+          .filter((task) => task.status === 'OPEN');
+      case 'in-progress':
+        return this.tasksService
+          .allTasks()
+          .filter((task) => task.status === 'IN_PROGRESS');
+      case 'done':
+        return this.tasksService
+          .allTasks()
+          .filter((task) => task.status === 'DONE');
+      default:
+        return this.tasksService.allTasks();
+    }
+  });
+
+
+Provide an injectable and make angular aware of it
+first way: @Injectable({ providedIn: 'root' })
+
+NullInjector (error when requesting provider that does not exist)
+Platform Environment Injector
+Application root Environment Injector
+ModuleInjector
+ElementInjector
+
+Alternative to @Injectable: in main.ts, add an argutment to the bootstrapApplication
+bootstrapApplication(AppComponent, {
+    providers: [TasksService]
+}).catch(err => console.error(err))
+
+But this does not allow the service for tree shaking
+
+
+Providing service with the Element injector
+useful for component, not for service in service
+=> add a providers array in the Component decorator conf object
+
+important to understand this for the element injector:
+now the service is only available to the components and its child
+and every instance of the component will get its own service instance
+
+
+Injecting services into services
+For ex. a logging service inside the TasksService
+import { Injectable } from '@angular/core';
+
+@Injectable({
+  providedIn: 'root',
+})
+export class LoggingService {
+  log(message: string) {
+    const ts = new Date().toLocaleTimeString();
+    console.log(`[${ts}]: ${message}`);
+  }
+}
+
+
+then inject it in the service as before.
+
+If you do not use the providedIn: 'root', you can add it
+as 2nd arg from bootstrapApplication,
+but if you use the element injector (providers: [LoggingService])
+you'll get a null injector, because service are not elements of the dom,
+so it won't work using element injector
+
+
+Angular devtools: you'll find the injector Tree tabIndex
+
+
+Using custom DI tokens & providers
+
+how injectable value are registered by angular?
+with @Injectable()
+or bootstrapApplication(AppComponent, {
+    providers: [{
+        provide: 'token',
+    }]
+})
+injection token is the identifier of the DI
+
+const TasksServiceToken = new InjectionToken<TasksService>("tasks-service-token")
+...
+providers: [{
+    provide: TasksServiceToken, useClass: TasksService
+}]
+this is the long form of providers: [TasksService]
+
+
+...
+then in the inject() parts on components, you'll have to use the token:
+const .. = inject(TasksServiceToken)
+
+...
+constructor(private tasksService: TasksServiceToken) will give an error
+use:
+constructor(@Inject(TasksServiceToken) private tasksService: TasksService)
+
+Of course, it's easier with @Injectable
+
+
+Prepare a Non-Class value for Injection
+
+for our select we could use a service for the values and inject them
+
+first,
+
+export const TaskStatusOptions = [
+  {
+    value: 'open',
+    taskStatus: 'OPEN',
+    text: 'Open',
+  },
+  {
+    value: 'in-progress',
+    taskStatus: 'IN_PROGRESS',
+    text: 'In-Progress',
+  },
+  {
+    value: 'done',
+    taskStatus: 'DONE',
+    text: 'Done',
+  },
+];
+
+export const TASK_STATUS_OPTIONS = new InjectionToken<TaskStatusOptions>(
+  'task-status-options'
+);
+
+secondly, provide the options:
+provide:
+and useValue with a value or useFactory with a function
+  ...
+  imports: [TaskItemComponent],
+  providers: [
+    {
+      provide: TASK_STATUS_OPTIONS,
+      useValue: TaskStatusOptions,
+    },
+  ],
+or use
+
+export const taskStatusOptionsProvider: Provider = {
+  provide: TASK_STATUS_OPTIONS,
+  useValue: TaskStatusOptions,
+};
+plus
+providers: [taskStatusOptionsProvider]
+
+then you can use it in the template
+replace
+
+      <option value="open" [selected]="task().status === 'OPEN'">Open</option>
+      <option value="in-progress" [selected]="task().status === 'IN_PROGRESS'">
+        In-Progress
+      </option>
+      <option value="done" [selected]="task().status === 'DONE'">
+        Completed
+      </option>
+with
+      @for(option of taskStatusOptions; track option.value) {
+      <option
+        [value]="option.value"
+        [selected]="task().status === option.taskStatus"
+      >
+        {{ option.text }}
+      </option>
+      }
+    and in the component
+
+  taskStatusOptions = inject(TASK_STATUS_OPTIONS);
+    plus in the parent or this component if no parent
+  providers: [taskStatusOptionsProvider],
+
+
+
+
+You can use all these DI and services with NGModules
+@NgModule({
+    ...
+    providers: [{
+        provide...
+        useClass...
+    }]
+})
+works with
+platformBrowserDynamic.bootstrapModule(AppModule)
+
+or
+
+platformBrowserDynamic.bootstrapModule(AppModule, {
+    providers: ...
+})
+but more common to to add the providers in the NgModule, except if you need it for all the app modules
+
+
+
+Working with services without using signals will work too
+
+
+---
+Make sense of angular change detection (CD) mechanism
+---
+
+What is ChangeDetection Mechanism?
+
+Your components tree is a Zone (using zone.js lib) which notifies angular about events, timers, etc...
+all template bindings are revisited to re-evaluate the values, it runs a lot
+
+so do not put extensive calc in templates
+
+Logs are displayed twice because components are visited twice
+=> Only in development to detect unwanted value changes
+
+ExpressionChangedAfterItHasBeenCheckedError: two different values on the 2 renders
+(if a component renders a Math.random(), value will change on each render)
+
+
+How to optimize this?
+
+Do basic efficient calculations
+(Pipes are cached)
+Avoid function in {{ }}
+Tell angular if an event does not matter:
+    ngOnInit() {
+        setTimeout(() => {
+            set a value
+        }, 2000)
+        setTimeout(() => {
+            log a value
+        }, 3000)
+    }
+    for the second timeout we don't want a revisit
+
+    you can optout of the zone watch mode:
+    private zone = inject(NgZone); //form @angular/core
+
+    ... in ngOnInit
+    this.zone.runOutsideAngular(() => {
+        setTimeout(() => {
+            log a value
+        }, 3000)
+    })
+this is called Avoiding zone pollution
+
+
+
+Using the OnPush strategy
+
+besides the default strategy, exist the "OnPush" strategy
+Enable it;
+in a component.Ts,
+@Component({
+    ...
+    changeDetection: ChangeDetectionStrategy.OnPush
+})
+
+Understanding it:
+it tells angular that the component will only ever change because some nested components change or input value change
+or an event occurred in the comp. or any of its child component
+
+OnPush and signals:
+Signals are new to angular, if you use them, signal changes also lead to active changes.
+If you are using a service for sharing data between components that handle a signal
+(messages array is in the service as a signal), it will work ok
+but, if not using signals in the service, but an array of strings,
+and a getter
+get allMessage() {
+    return [...messages]
+}
+in this case change detection is not triggered bec. we have no input change, no signal change, no manual trigger, no event
+
+how to trigger it manually?
+in the component, inject:
+  private cdRef = inject(ChangeDetectorRef)
+we need a way of getting notified in the component
+angular uses for that rxjs (internally and by devs)
+=> in the service:
+import { BehaviorSubject } from 'rxjs';
+
+export class MessagesService {
+    messages$ = new BehaviorSubject<string[]>([])
+    // the $ is a convention for subscriptions objects
+
+    private messages : string[] = []
+    ...
+
+    addMessage(message: string) {
+        this.messages = [...this.messages, message];
+        this.messages$.next([...this.messages]); // emits a  new event
+    }
+}
+
+in the messages list component, implements OnInit and use cdRef markForCheck
+
+  private cdRef = inject(ChangeDetectorRef);
+  messages: string[] = []
+
+  ngOnInit() {
+    const sub = this.messagesService.messages$.subscribe((messages) =>  {
+        this.messages = messages;
+        this.cdRef.markForCheck();
+    })
+  }
+
+  // cleanup the subscription on ngOnDestroy or
+  private destroyRef = inject(DestroyRef)
+  and in the ngOnInit, add:
+  this.destroyRef.onDestroy(() => {
+    sub.unsubscribe()
+  })
+
+
+Or use The async Pipe for observables
+instead of managing and triggering changes manually and cleanup, you can also use
+
+    messages$ = this.messagesServoce.messages$
+
+now we can use a pipe in the template to read values and cleanup
+
+    @for (message of messages$ | async; track message) {
+        {{ message }}
+    }
+angular will setup a sub, read the value, provide it to the template and unsubscribe when needed
+it will also trigger CD when new values are received.
+
+import { AsyncPipe } from '@angular/common'
+and add it in the imports of the component
+
+but if you need to do more than output the subject values, you'll have to do it manually (previous case)
+
+
+
+
+Going zoneless
+
+if you use signals and change a signal value, angular knows about it
+same is true for event binding, angular handles click events for ex.
+so it will trigger CD without zone.js
+
+zone.js listens to expired timers
+but if we update signals inside timers, we do not need zone.js
+
+angular 18 allows you to do that if you use signals
+this leads to => more fine-grained CD, smaller bundle size, less listeners,
+
+in angular.json, remove zone.js froom polyfills array
+and in the bootstrapApplication
+bootstrapApplication(AppComponent, {
+    providers: [provideExperimentalZonelessChangeDetection()] // from '@angular/core'
+}).catch(err => console.error(err))
+
+check you do not have asynspipe nor behaviorSubject nor NgZone
+nor zone.runOutsideAngular()
+
+
+
+
+
+RxJS and Observables
+
+Observables in angular is a concept from RxJS
+An Observable is an Object that uses and controls a stream of data
+set up Subscriptions to listen for values over time
+
+
+interval from 'rxjs' // provide numbers
+ngOnInit() {
+    const sub = interval(1000).subscribe({
+        next: (val) => console.log(val),
+        (complete: ()=> {})
+        (error: ()=> {})
+    })
+    + destroyRef
+}
+
+Operators (map,...)
+you need to subscribe to use operators anyway
+const sub = interval(1000).pipe(
+    map((val) => val * 2)
+).subscribe(...)
+
+operators are one key diff between observables and signals
+
+
+what's the difference? almost the same
+signals are new, before we had to use Subjects from rxjx
+
+signals have initial value, observables don't.
+a bit more code when using Signals
+with observables, it starts when you have subscribers
+
+observables are pipeline (stream) of values changed over time (great for events and streamed data)
+signals are values in a container that you can read any time (great for managing application state)
+
+
+
+Convert signals to observables
+
+call toObservable() from @angular/core/rxjs-interop
+clickCount$ = toObservable(this.clickCount) // not execute the signal, no ()
+(or in the constructor as usual)
+
+then in ngOnInit():
+this.clickCount$.subscribe({
+    next: (val) => console.log(val)
+})
+
+
+Convert observables to signals
+// from rxjs
+interval$ = interval(1000)
+// from @angular/core/rxjs-interop
+intervalSignal = toSignal(this.interval$)
+
+...
+{{ intervalSignal() }}
+
+observables have no initial value (subjects can have though)
+angular will set the undefned value by default
+To have one initial value:
+intervalSignal = toSignal(this.interval$, { initialValue: 0 })
+
+signal will automatically cleanup the  observale or subscription
+or you can use { manualCleanup : true } but you'll have to cleanup yourself
+
+
+
+Custom observable from scratch
+// Observable from 'rxjs'
+customInterval$ = new Observable((subscriber) => {
+   // subscriber.next or complete or error
+   // here we define when this should happen
+   let times =0
+   const interval = setInterval(() => {
+    // you can use a subscriber.error()
+    if (times > 3) {
+        clearInterval(interval);
+        subscriber.complete();
+        return;
+    }
+    console.lgo('Emitting new value...')
+    subscriber.next({message: 'new value' })
+    times++
+   }, 2000)
+});
+
+in ngOnInit():
+ this.customInterval$.subscribe({
+    next: (val) => console.log(val),
+    complete: () => console.log("completed")
+ })
+
+
+/////
+Backend http requests
+Sending and handling Responses
+/////
+
+
+you don't directly talk to a database
+you talk to an API
+
+How do you connect to the api?
+=> fetch data (send request to the api)
+
+provide HttpClient in the root module or bootstrapApplication
+
+import { provideHttpClient } from '@angular/common/http';
+bootstrapApplication(AppComponent, {
+    providers: provideHttpClient()
+})
+
+and then:
+
+import { HttpClient } from '@angular/common/http';
+...
+private httpClient = inject(HttpClient);
+
+
+Sending a get request to fetech data
+it returns an observable we have to subscribe to
+    this.httpClient
+      .get<{ places: Place[] }>('http://localhost:3000/places')
+      .subscribe({
+        next: (respData) => {
+          console.log(respData);
+        },
+      });
+
+usually httpClient method returns one thing only
+
+
+Configuring http requests so that the next method params be different
+
+this.httpClient
+  .get<{ places: Place[] }>('http://localhost:3000/places',
+    { observe: 'response'}
+   )
+  .subscribe(({
+    next: (response) => {
+        console.log(response.body?.places)
+        // here, you'll access the body, headers, ok, status, type and more params
+    }
+}))
+
+if you configure with { observe: 'events'}, the next function will be triggerd multiple times
+next: (event) => log(event)
+you'll have the event with type and then the repsonse event
+
+
+You can pipe and change the data we got with pipe / map or other
+
+const subscription = this.httpClient
+      .get<{ places: Place[] }>('http://localhost:3000/places')
+      .pipe(map((respData) => respData.places))
+      .subscribe({
+        next: (places) => {
+          this.places.set(places);
+        },
+      });
+
+
+Showing a fallback and errors
+
+first force the error in the backend (res.status(500).json())
+
+Fallback: use a signal
+isFetching = signal(false);
+
+  ngOnInit() {
+    this.isFetching.set(true);
+
+    const subscription = this.httpClient
+      .get<{ places: Place[] }>('http://localhost:3000/places')
+      .pipe(map((respData) => respData.places))
+      .subscribe({
+        ...,
+        complete: () => {
+          this.isFetching.set(false);
+        },
+      });
+
+Errors:
+we can use a signal or an operator like catchError
+.pipe(
+    map((respData) => respData.places))
+    .catchError((error, observable) => throwError(() => new Error('this is an error'))
+    )
+)
+.subscribe({
+    error: (error: Error) => {
+        this.error.set(error.message)
+    }
+
+the operator throwError will generate an observable
+
+
+
+Send data to backend
+
+enable the output event
+<app-places [places]="places()!" (selectPlace)="onSelectPlace($event)" />
+
+handle it
+  onSelectPlace(selectedPlace: Place) {
+    const request = this.httpClient
+      .put('http://localhost:3000/user-places', {
+        placeId: selectedPlace.id,
+      })
+      .subscribe({
+        next: (resData) => console.log(resData),
+      });
+  }
+
+
+Use a service to avoid duplication code
+
+  private fetchPlaces(endpoint: string, errorMessage: string) {
+    return this.httpClient
+      .get<{ places: Place[] }>(`http://localhost:3000/${endpoint}`)
+      .pipe(
+        map((respData) => respData.places),
+        catchError((error, obs) => throwError(() => new Error(errorMessage)))
+      );
+  }
+  loadAvailablePlaces() {
+    return this.fetchPlaces('places', 'Error fetching available places');
+  }
+
+and inject the service in the component and replace the part with
+this.placesService.loadAvailablePlaces().subscribe...
+
+
+Manage http-loaded data with tap:
+import { tap } from 'rxjs'
+
+loadUserPlaces() {
+    return this.fetchPlaces(
+      'user-places',
+      'Error fetching available favorite places'
+    ).pipe(
+      tap({
+        next: (userPlaces) => this.userPlaces.set(userPlaces),
+      })
+    );
+  }
+
+tap is like a subscription without subscribe
+this allows to remove the next function in the component (in subscribe())
+and replace the signal with the observable in the service:
+service:
+  loadedUserPlaces = this.userPlaces.asReadonly();
+
+component:
+  userPlaces = this.placesService.loadedUserPlaces;
+
+  ngOnInit() {
+    this.isFetching.set(true);
+    const subscription = this.userPlaces().subscribe({
+      complete: () => {
+        this.isFetching.set(false);
+      },
+      error: (error: Error) => {
+        this.error.set(error.message);
+      },
+    });
+
+it's one way of doing it
+
+
+Optimistic updating in the service
+
+
+  addPlaceToUserPlaces(place: Place) {
+    this.userPlaces.update((prevPlaces) => [...prevPlaces, place]);
+
+    return this.httpClient.put('http://localhost:3000/user-places', {
+      placeId: place.id,
+    });
+  }
+
+Improved version:
+
+  addPlaceToUserPlaces(place: Place) {
+    const prevPlaces = this.userPlaces();
+    this.userPlaces.set([...prevPlaces, place]);
+
+    return this.httpClient
+      .put('http://localhost:3000/user-places', {
+        placeId: place.id,
+      })
+      .pipe(
+        catchError((error) => {
+            // rollback
+          this.userPlaces.set(prevPlaces);
+          return throwError(() => new Error('Failed to store selected place'));
+        })
+      );
+  }
+
+
+App error management
+
+an error service that renders a dialog modal if there is an error (in app)
+
+
+
+Delete data with http client
+
+  removeUserPlace(place: Place) {
+    const prevPlaces = this.userPlaces();
+
+    if (prevPlaces.some((p) => p.id === place.id)) {
+      this.userPlaces.set(prevPlaces.filter((p) => p.id !== place.id));
+    }
+
+    return this.httpClient
+      .delete('http://localhost:3000/user-places/' + place.id)
+      .pipe(
+        catchError((error) => {
+          this.userPlaces.set(prevPlaces);
+          this.errorService.showError('Failed removing data');
+          return throwError(() => new Error('Failed to remove selected place'));
+        })
+      );
+  }
 
 
 
@@ -125,6 +1580,19 @@ using computed to make angular know what to rerender
 
 
 
+
+
+
+
+
+
+////
+STOP HERE
+////
+
+
+
+//////////////////////////
 Components and data binding
 
 Custom Property Binding:
@@ -258,7 +1726,7 @@ Using @HostBinding to avoid using the renderer
 }
 
 Always prefer to use host property over @HostBinding and @HostListener
-      
+
 @Component({
   selector: 'profile-photo',
   template: `
@@ -281,7 +1749,7 @@ export class CustomSlider or ProfilePhoto {
 
 and use it this way:
 <profile-photo role="group" [id]="otherId" />
-    
+
 
 Referencing children with queries
 
@@ -369,7 +1837,7 @@ Alternative Syntax with inject()
 @Component(...)
 export class AccountComponent {
   private loggingService?: LoggingService; // <- must be added
- 
+
   constructor() {
     this.loggingService = inject(LoggingService);
   }
@@ -443,7 +1911,7 @@ et il faudra, dans le composant qui gère la liste, écouter les changements
 -------
 Routing
 -------
-Define routes 
+Define routes
 appRoutes: Routes = [
     { path: '' , component: FComponent }
 ]
@@ -458,7 +1926,7 @@ or [routerLink]="['/users']"
 
 
 Understanding nav paths
-Use abs. paths "/", 
+Use abs. paths "/",
 using relative path ("server" or "./server") will add it to the current path
 or "../server"
 
@@ -515,7 +1983,7 @@ programmatically:
 this.router.navigate([...], { queryParams: {...}}, fragment: 'loading)
 
 
-Retrieving these params 
+Retrieving these params
 inject ActivatedRoute
 and on init:
 this.route.snpashot.queryParams or .fragment (not reactive)
@@ -540,12 +2008,12 @@ Redirecting and wild cards
 { path: 'not-found', component: NotFoundComponent },
 { path: '**', redirectTo: 'not-found' }
 ** means catch all
-should be put ath the end of the routes 
+should be put ath the end of the routes
 
-By default, Angular matches paths by prefix. That means, that the following route will match both /recipes  and just / 
-{ path: '', redirectTo: '/somewhere-else' } 
+By default, Angular matches paths by prefix. That means, that the following route will match both /recipes  and just /
+{ path: '', redirectTo: '/somewhere-else' }
 To fix this behavior, you need to change the matching strategy to "full" :
-{ path: '', redirectTo: '/somewhere-else', pathMatch: 'full' } 
+{ path: '', redirectTo: '/somewhere-else', pathMatch: 'full' }
 
 
 Make a route Module
@@ -591,7 +2059,7 @@ static data
 errorMessage in a error-page.component
 in the route def. add a data: { message: 'something bad happend'}
  in the error comp. inject ActivatedRoute
-ngOnInit 
+ngOnInit
 -> this.errorMessage = this.route.snapshot.data['message']
 -> this.route.data.subscribe(
     (data:Data) => {
@@ -736,7 +2204,7 @@ Set default values
 
 Grouping form controls
 ngModelGroup="userData" #userData="ngModelGroup"
-and 
+and
 <p *ngIf="!userData.valid">Invalide user data</p>
 
 Radio buttons
@@ -796,7 +2264,7 @@ and
 
 this.projectForm.markAllAsTouched();
 
-There is an updateOn property which can be set to blur or submit instead of change 
+There is an updateOn property which can be set to blur or submit instead of change
 (which is the default).
 
 Reactive:
@@ -834,7 +2302,7 @@ and in the template:
 and all in a <div formArrayName="hobbies">
 
 and loop hobbies
-    <div 
+    <div
       class="form-group"
       *ngFor="let hobbyControl of getControls(); let i = index">
         <input type="text" class="form-control" [formControlName]="i">
@@ -1124,7 +2592,7 @@ export class PostsService {
 }
 
 and in the component, use the service
-sol1: use a Subject 
+sol1: use a Subject
 or
 sol2: don't subscribe in the service
 in the service:  (if there is a reason to care about the answer in the subscribe)
@@ -1186,7 +2654,7 @@ Add Query params
 firebase: add params in this second opitonal obj, params: new HttpParams().set('key', 'value')
 
 or you can do it by adding in the url
-or use 
+or use
 let searchParams = new HttpParams();
 searchParams = searchParams.append('debug', true)
 searchParams = searchParams.append('edit', 1)
@@ -1203,7 +2671,7 @@ this.http.post(
     // resp will be the full http response with status, ok, body, headers, etc...
 })
 
-you can use observe: 'events' 
+you can use observe: 'events'
 this.http
     .delete('url'), { observe: 'events' })
     .pipe(
@@ -1263,7 +2731,7 @@ example for a data-storage.service.ts:
 
 @Injectable({ providedIn: 'root' })
 export class DataStorageService() {
-    
+
     constructor(private http: HttpClient, private recipeService: RecipeService) {} // import HttpClientModule in NgModule imports
 
     storeRecipes() {
@@ -1337,7 +2805,7 @@ export class RecipesResolverService implements Resolve<Recipe[]> { // from '@ang
 }
 
 the tap operator allow to exec some code without altering the result
-so we can tweak the fetchRecipes() to        
+so we can tweak the fetchRecipes() to
     return this.http
         .get<Recipe[]>('firebase-url/recipes.json')
         .pipe(map(recipes => { // map from 'rxjs/operators'
@@ -1376,7 +2844,7 @@ In firebase, to test, change the rules:
 }
 then enable auth for email/password on firebase console
 
-Prepare the signup auth 
+Prepare the signup auth
 firebase will give us an endpoint (like (https://googleapis.com/identifytoolkit/v3/relyingparty/signupNewUser?key=<WEB_API_KEY>))
 and a request payload with email password and returnSecureToken
 the response payload will have an idToken, kind, email, refreshToken, expiresin, localId
@@ -1426,7 +2894,7 @@ this.authService
     )
 
 Logging
-in AuthResponseData, add a registered?: boolean 
+in AuthResponseData, add a registered?: boolean
 signin(email, password) {
     return this.http
         .post<AuthResponseData>('url/verifyPassword?key=apikey', {email, password, returnSecureToken: true} )
@@ -1458,7 +2926,7 @@ if (this.loginMode) {
     authObs = this.authService.signup(email, password);
 }
 authObs.subscribe(
-    respData => { 
+    respData => {
         log(respData);
         this.isLoading = false;
     },
@@ -1473,9 +2941,9 @@ Storing user data
 create a UserModel user.model.ts
 export class User {
     constructor (
-        public email, 
-        public id: string, 
-        private _token: string, 
+        public email,
+        public id: string,
+        private _token: string,
         private _tokenExpDate) {
     }
 
@@ -1506,7 +2974,7 @@ tap is allowed to execute some operations but not to change the response
     }
 
 Adding token to the requests
-in authService, use a BehaviorSubject 
+in authService, use a BehaviorSubject
 user = new BehaviorSubject<User>(null)
 The difference between Subject and BehaviorSubject being it gives access to the previously subscribed value even if thery
 hadn't subscribed at the point of time the value was emitted
@@ -1521,14 +2989,14 @@ fetchRecipes() {
                 return this.http
                     .get<Recipe[]>(
                         'firebase-url/recipes.json',
-                        { params: new HttpParams().set('auth', user.token)}    
+                        { params: new HttpParams().set('auth', user.token)}
                     )
             }),
             map(recipes => { // map from 'rxjs/operators'
                 return recipes.map(recipe => { // map from js
-                    return { 
-                        ... recipe, 
-                        ingredients: recipe.ingredients ? recipe.ingredients : [] 
+                    return {
+                        ... recipe,
+                        ingredients: recipe.ingredients ? recipe.ingredients : []
                     }
                 })
             }),
@@ -1659,9 +3127,9 @@ export class AuthGuard implements CanActivate {
         if (isAuth) {
           return true;
         }
-        return this.router.createUrlTree(['/auth']); 
+        return this.router.createUrlTree(['/auth']);
       })
-      // or rather than urltree 
+      // or rather than urltree
       // But can lead to race conditions
       // tap(isAuth => {
       //   if (!isAuth) {
@@ -1827,7 +3295,7 @@ then clean app.module.ts and app-routing accordingly
 
 
 Lazy Loading
-this is an optimization 
+this is an optimization
 Each route can have its own module.
 The idea is to only load the code that belongs to the requested route
 
@@ -1861,10 +3329,10 @@ So if using a SharedService, the imported services this can happen, so  you need
 Deployment
 ----------
 
-Prep: 
+Prep:
 - use and check env. variables
 - test code, and modules and loazy loading
-- build the app: 
+- build the app:
     > ng build --prod (--prod only for older versions of angular) (uses ahead-of-time compilation)
 - deploy build artifacts (generated files) to static host (html css js)
 
@@ -1902,7 +3370,7 @@ Building a Standalone component
 a regular component with a standalone: true in the Component decorator
 you should no longer declare the component in any module declarations then but in the imports of the module
 
-For custom directives or pipes using the standalone, 
+For custom directives or pipes using the standalone,
 you can turn the directive into a standalone
 or you can add the imports: [SharedModule] in the standalone component to get them
 (supposing they are in the SharedModule)
@@ -1914,8 +3382,8 @@ and use an imports:[CustomDirective] in the component using it
 A standalone Root component
 nd remove from all modules
 and use an imports:[AppComponent] in the component using it
-and change 
-platformBrowser.bootstrapModule(AppModule) 
+and change
+platformBrowser.bootstrapModule(AppModule)
 to
 bootstrapApplication(AppComponent) // from '@angular/platform-browser'
 
@@ -1950,7 +3418,7 @@ export const routes: Route[] = [
 ]
 
 in app routing module:
-{ 
+{
     path: 'dashboard',
     loadChildren: () => import('./dashboard/route').then(mod => mod.routes)
 }
@@ -1975,7 +3443,8 @@ counter = signal(0);
 
 Updating a signal
 increment() {
-    this.counter.update((prevCounter) => prevCounter + 1)
+    this.counter
+    (prevCounter) => prevCounter + 1)
 }
 
 Read & output value
@@ -1989,7 +3458,8 @@ this.counter.set(this.counter() + 1)
 mutate was removed from angular 17
 
 actions: string[] = [] -> actions = signal<string[]>([])
-this.actions.update(prev => [...prev, newValue])
+this.actions
+prev => [...prev, newValue])
 <li *ngFor="let action of actions()">{{ action }}</li>
 
 Still in progress...
@@ -2064,7 +3534,7 @@ start with: > npm run build:ssr
 the dist folder will need to be uploaded to server with package.json and angular.json
 on server: npm install + npm run serve:ssr to start the server
 
- one important implication: You MUST NOT use any browser-only APIs like document.querySelector()  in your Angular code! 
+ one important implication: You MUST NOT use any browser-only APIs like document.querySelector()  in your Angular code!
 Simply because it will execute on the server and there, such APIs are not available.
 
 
@@ -2096,7 +3566,7 @@ in the class:
 and in the template:
     <div [@divState]="state" style="width: 100px; height: 100px"></div>
 
-Switching between states 
+Switching between states
 onAnimate() {
     this.state = 'highlighted'
 }
@@ -2106,7 +3576,7 @@ or 'normal' <=> 'highlighted'
  transition('shrunk <=> *', animate(500)) // * = from any state
 
 
-Transitions 
+Transitions
 with animate, you have more control
 animate(400, style({
     borderRadius: '50px'
@@ -2175,7 +3645,7 @@ transition('void <=> *', keyframes([ // from @angular/animations
         opacity: 1,
         offset: 1,
     }),
-])) 
+]))
 
 Grouping Transitions
 use the group() method. Instead of doing the first then the second and so on,
@@ -2251,7 +3721,7 @@ it('should display the username if the user is logged in', () => {
 it('should not display the username if the user is not logged in', () => {
     let fixture = TestBed.createComponent(UserComponent);
     let app = fixture.debugElement.componentInstance;
-    
+
     let compiled = fixture.debugElement.nativeElement;
     expect(compiled.querySelector('p').textContent).not.toContain(app.user.name);
 })
@@ -2325,9 +3795,9 @@ Understand projects and config files
         --skip-tests
         --skip-install
         --strict
-        
+
     .editorconfig => for all editors to get same format
-    browserslist: 
+    browserslist:
 	the browser you want to support on prod
     karma.conf.js for tests config
 
@@ -2345,10 +3815,10 @@ Understand projects and config files
 	ng deploy
 	...
 
-    angular.json	
+    angular.json
 	to manage your project config
 
-	
+
 	"newProjectRoot": "projects",
 	"projects": { // one entry per project
 	"defaultProject": "angular-config"
@@ -2365,7 +3835,7 @@ Understand projects and config files
 		ng build --configuration=staging
 
 	"schematics": {}
-        Schematics are blueprints for commands like ng generate 
+        Schematics are blueprints for commands like ng generate
 	or ng add (add libs and capabilities to a project)
 	or ng update (update projects and libs)
 	third parties can add custom schematics
@@ -2401,17 +3871,17 @@ Browserlist && differential loading
 	angular will auto prefix and check what polyfills may be needed depending on browsers targeted
 	will add polyfills (bigger bundle of course)
 	Diff.loading will give you both -> 2 versions in dist for each file (polyfills.js, main.js...)
-	
+
 	You can tell what browsers you need to support in browserlist
 	You can have one like this:
 	ng generate config browserslist
-	
+
 	check https://github.com/browserslist/browserslist#queries
 
 	polyfills.ts: sometimes, depending on angular versions, you may need to uncomment some imports
 	like for animations in safari
 
-	
+
 Managing multiple projects in one folder
 	ng generate application backend will add a new projects folder with a new backend angular project in it
 	then ng serve --project=backend
@@ -2428,7 +3898,7 @@ Managing multiple projects in one folder
 	ng generate library designLib: it will add the lib in the projects
 	the difference: you'll have a package.json file, a ng-package.json file, a lib folder in the src folder
 	and a public-api.ts
-	
+
 
 
 
@@ -2449,7 +3919,7 @@ in an app if you want to load a custom component (app-alert with a prop message 
 	constructor() {
 	  setTimeout(() => {
 	    this.content = "<app-alert message='rendered dynamically'></app-alert>"
-	  }, 1000);	  
+	  }, 1000);
 	}
 	<div [innerHTML]="content"></div>
 
@@ -2460,17 +3930,17 @@ in an app if you want to load a custom component (app-alert with a prop message 
 	sol:
 	import { createCustomElement ] from '@angular/elements'
 
-	Maybe you'll need (depending on angular version prior to 14) to add 
+	Maybe you'll need (depending on angular version prior to 14) to add
 	@webcomponents/custom-elements too in package.json, rxjs-compat
 	and some tweaks in polyfills
 
-	
+
 	constructor(injector: Injector, domSanitizer: DomSanitizer) {
  	  const AlertElement = createCustomElement(AlertComponent, {injector});
 	  customElements.define('my-alert', AlertElement); // this is pure js
 	  setTimeout(() => {
 	    this.content = "<app-alert message='rendered dynamically'></app-alert>"
-	  }, 1000);	  
+	  }, 1000);
 	}
 	And you have to add in the NgModule the entryComponents: [AlertComponent]
 	And you need to sanitize it
@@ -2480,7 +3950,7 @@ in an app if you want to load a custom component (app-alert with a prop message 
 -------
 Offline
 -------
-pwa: progressive web apps 
+pwa: progressive web apps
 
 Setup:
 from https://angular.io/guide/service-worker-getting-started
@@ -2492,10 +3962,10 @@ npx http-server -p 8080 -c-1 dist/angular-pwa/browser
 this will allow to load http://localhost:8080
 
 angular.json
-	in "configurations.production", adds 
+	in "configurations.production", adds
               "serviceWorker": "ngsw-config.json"
 app-config.json
-    it adds 
+    it adds
     provideServiceWorker('ngsw-worker.js', {
       enabled: !isDevMode(),
       registrationStrategy: 'registerWhenStable:30000',
@@ -2511,7 +3981,7 @@ ngsw-config.json file
 	    "name": "assets" -> targets resources not immediately needed (fonts, images)
 	    "installMode": "lazy",
 
-	With the value "prefetch", it retrieves the new version immediately, while "lazy" would let the SW fetch it only if requested again. 
-	"updateMode": "prefetch" specifies how the SW has to behave if a new version of the resource is detected. 
+	With the value "prefetch", it retrieves the new version immediately, while "lazy" would let the SW fetch it only if requested again.
+	"updateMode": "prefetch" specifies how the SW has to behave if a new version of the resource is detected.
 	"updateMode": "lazy" works only if installMode is "lazy"
 
