@@ -1574,6 +1574,712 @@ Delete data with http client
 
 
 
+HTTP Interceptors
+
+special function to execute logic
+
+go to the place where you pass the provideHttpClient
+and use withInterceptors([])
+
+import {
+  HttpHandlerFn,
+  HttpRequest,
+  provideHttpClient,
+  withInterceptors,
+} from '@angular/common/http';
+
+function loggingInterceptor(
+  request: HttpRequest<unknown>,
+  next: HttpHandlerFn
+) {
+  // you could manipulate a request
+  const req = request.clone({
+    headers: request.headers.set('X-DEBUG', 'TESTING'),
+  });
+  console.log('request');
+  console.log(request);
+  return next(request);
+}
+
+bootstrapApplication(AppComponent, {
+  providers: [provideHttpClient(withInterceptors([loggingInterceptor]))],
+}).catch((err) => console.error(err));
+
+
+
+Class-based Interceptors
+Besides defining HTTP interceptors as functions (which is the modern, recommended way of doing it), you can also define HTTP interceptors via classes.
+
+For example, the loggingInterceptor from the previous lecture could be defined like this (when using this class-based approach):
+
+import {
+  HttpEvent,
+  HttpHandler,
+  HttpInterceptor,
+  HttpRequest,
+} from '@angular/common/http';
+import { Observable } from 'rxjs';
+
+@Injectable()
+class LoggingInterceptor implements HttpInterceptor {
+  intercept(req: HttpRequest<unknown>, handler: HttpHandler): Observable<HttpEvent<any>> {
+    console.log('Request URL: ' + req.url);
+    return handler.handle(req);
+  }
+}
+An interceptor defined like this, must be provided in a different way than before though.
+
+Instead of providing it like this:
+
+providers: [
+  provideHttpClient(
+    withInterceptors([loggingInterceptor]),
+  )
+],
+You now must use withInterceptorsFromDi() and set up a custom provider, like this:
+
+providers: [
+  provideHttpClient(
+    withInterceptorsFromDi()
+  ),
+  { provide: HTTP_INTERCEPTORS, useClass: LoggingInterceptor, multi: true }
+]
+
+
+
+Intercept incoming response
+(result of calling next(request) => gives an observable)
+
+return next(request).pipe(
+    tap({ //define your own observer
+        next: event => {
+            if (event.type === HttpEventType.Response)
+        }
+    })
+)
+
+
+
+use cases:
+1. Global Error Handling
+Suppose you want to handle HTTP errors globally, such as displaying a notification or redirecting
+to a specific error page (e.g., a 404 page or login page for unauthorized access).
+
+2. Response Transformation
+If the backend API returns data in a format that is not directly usable by the frontend, you can
+transform the response into the desired format.
+
+3. Authentication Token Refresh
+If you are using tokens for authentication (like JWT), you might want to intercept 401 errors
+to attempt refreshing the token and retrying the failed request.
+
+4. Logging
+For debugging purposes, you might want to log all HTTP responses to the console or send them
+to a logging service.
+
+5. Adding Common Response Headers
+If the backend includes custom headers in the response that need to be extracted and processed,
+you can do so in an interceptor.
+
+
+
+
+--------------
+## Managing Forms
+--------------
+2 ways: reactive or template-driven
+
+Template: easy to get started, complex logic can be tricky
+Reactive: setup verbose, complex forms can be easier
+
+### Template-driven forms
+
+goal: make angular aware of the form and interactions
+
+use ngModel without 2 way binding
+  <input id="email" type="email" ngModel />
+this registers an input element  with angular, allowing it to manage it
+this needs to use the name attribute to work
+  <input id="email" type="email" ngModel name="email" />
+
+Getting access to the form:
+add a template variable to the form
+<form #form="ngForm" (onSubmit)="onSubmit(form)">
+
+in the .ts file:
+onSubmit(form: NgForm) {
+    console.log(form.form as Formgroup.controls or value)
+}
+
+Extracting input values:
+  onSubmit(formData: NgForm) {
+    const enteredEmail = formData.form.value.email;
+    const enteredPassword = formData.form.value.password;
+  }
+you can also use two way binding ofc.
+
+
+Validating input values:
+with template driven approach yu can add special attributes directives
+when using required with ngModel, angular will take over
+
+you can use required, email, minlength, min, max, pattern and more
+
+adding these validations does not prevent angular to submit,
+it will change internally managed values
+for ex status: "INVALID" or invalid: true or
+form.controls.email.errors: { required: true } or { email: true }
+
+
+Using form validation status to provide feedback to user:
+  onSubmit(formData: NgForm) {
+    if (formData.form.invalid) {
+      console.log(formData.form);
+      return;
+    }
+
+in the template:
+  @if (forme.form.controls['email'].touched &&
+  forme.form.controls['password'].touched && forme.form.invalid) {
+  <p class="control-error">Invalid values!</p>
+  }
+but this wont work because the first time it has been rendered, this infos are not available yet
+
+instead use a template variable
+    <input
+        id="email"
+        name="email"
+        type="email"
+        ngModel
+        required
+        email
+        #email="ngModel"
+      />
+
+    @if (email.touched && forme.form.invalid) {
+    <p class="control-error">Invalid values!</p>
+    }
+
+
+Adding validation styles
+angular adds css classes to input: ng-invalid, ng-pristine, ng-touched or ng-untouched
+so you can style these
+
+.control:has(.ng-invalid.ng-touched.ng-dirty) label {
+  color: #f98b75;
+}
+
+input.ng-invalid.ng-touched.ng-dirty {
+  background-color: #fbdcd6;
+  border-color: #f84e2c;
+}
+
+and
+  @if (password.touched && password.dirty && password.invalid) {
+  <p class="control-error">Invalid password, Must be at least 6 chars long!</p>
+  }
+
+
+Interacting with the form object in the component
+formData.form.reset();
+formData.form have a lot of other methods: markAllAsTouched, markAsDirty, removeValidators, addValidators, ...
+
+
+How to keep the values the user typed?
+save the values and if page loads re populate with values if I have one
+
+  private form = viewChild.required<NgForm>('forme');
+  private destroyRef = inject(DestroyRef);
+
+  constructor() {
+    afterNextRender(() => {
+      // for each key stroke
+      const sub = this.form().valueChanges?.subscribe({
+        next: (value) => {
+          console.log(value.email);
+          window.localStorage.setItem(
+            'saved-login-form',
+            JSON.stringify({
+              email: value.email,
+            })
+          );
+        },
+      });
+
+      this.destroyRef.onDestroy(() => sub?.unsubscribe());
+    });
+  }
+
+you can debounce the key strokes
+      const sub = this.form()
+        .valueChanges?.pipe(debounceTime(600))
+        .subscribe({
+          next: (value) => {
+            console.log(value.email);
+            window.localStorage.setItem(
+              'saved-login-form',
+              JSON.stringify({
+                email: value.email,
+              })
+            );
+          },
+        })
+
+to retrieve the value:
+      const savedForm = window.localStorage.getItem('saved-login-form');
+      if (savedForm) {
+        const loadedFormData = JSON.parse(savedForm);
+        const savedEmail = loadedFormData.email;
+        this.form().setValue({
+            email: savedEmail,
+            password: ''
+        });
+        // or if you want only one field
+        // this.form().controls['email'].setValue(savedEmail)
+      }
+this will not work, you have to put this in a setTimeout()
+
+
+
+### Reactive forms
+
+The setup is not done in the template
+Form is initialized in our TS file
+
+import { FormControl, FormGroup } from '@angular/forms';
+...
+form = new FormGroup({
+  email: new FormControl(''),
+  password: new FormControl('')
+})
+
+
+Syncing reactive form with template
+
+We do it with special directives
+first import the ReactiveFormsModule in the component decorator
+then in the template:
+<form [formGroup]="form">
+...
+  <input id="email" type="email" [formControl]="form.controls.email" />
+or
+  <input id="email" type="email" formControlName="email" />
+
+
+Handling form submission
+
+<form [formGroup]="form" (ngSubmit)="ngSubmit()">
+
+ngSubmit() {
+  console.log(this.form)
+    const email = this.form.value.email;
+    const password = this.form.value.password;
+}
+
+we get better typescript with reactive forms
+
+
+Validators for inputs
+
+setup in the code, in the formgroup
+
+form = new FormGroup({
+  email: new FormControl('', [] or {}),
+
+    email: new FormControl('', {
+      validators: [Validators.email, Validators.required],
+      // asyncValidators: [],
+      // nonNullable: false,
+    }),
+    password: new FormControl('', {
+      validators: [Validators.required, Validators.minLength(6)],
+    }),
+
+
+Adding your won validators
+
+it's a function
+(control) => {
+  return {}
+}
+
+function mustContainQuestionMark(control: AbstractControl) {
+  if (control.value.includes('?')) {
+    return null; // valid
+  }
+
+  return {
+    doesNotContainQuestionMark: true,
+  };
+}
+and use it
+    password: new FormControl('', {
+      validators: [
+        Validators.required,
+        Validators.minLength(6),
+        mustContainQuestionMark,
+      ],
+    }),
+
+
+Async validators
+
+ayncValidators: un function that must return an observables
+
+import { of } from 'rxjs'
+// of produces an observable that instantly return a value
+
+function emailIsUnique(control: AbstractControl) {
+  if (control.value !== 'test@example.com') {
+    return of(null)
+  }
+
+  return of({ notUnique: true })
+}
+then...
+  email: new FormControl('', {
+    validators: [Validators.email, Validators.required],
+    ayncValidators: [emailIsUnique]
+
+
+
+Interacting with the form programmatically
+
+ ngOnInit() {
+    const savedForm = window.localStorage.getItem('login');
+
+    if (savedForm) {
+      const loadedForm = JSON.parse(savedForm);
+      this.form.patchValue({
+        email: loadedForm.email,
+      });
+    }
+
+    const sub = this.form.valueChanges.pipe(debounceTime(500)).subscribe({
+      next: (value) => {
+        window.localStorage.setItem(
+          'login',
+          JSON.stringify({ email: value.email })
+        );
+      },
+    });
+
+    this.destroyRef.onDestroy(() => sub.unsubscribe());
+  }
+
+
+
+Nested form groups:
+
+use new FormGroup in a FormGroup
+passwords: new FormGroup({
+  password: ...,
+  confirmPassword: ...
+})
+
+<div class="control-row"  [formGroup]="signupForm.controls.passwords">
+or simpler:
+<div class="control-row" formGroupName="passwords">
+
+then we can access it in the onSUbmit with
+this.form.value.passwords.password
+
+
+
+Working with Form Arrays (checkbox)
+
+new FormArray([
+  new FormControl()
+])
+when you have a list of controls that works together in the end
+or when you don't need names to form controls
+
+then use formArrayName and formControlName:
+
+<fieldset formArrayName="source">
+    <legend>How did you find us?</legend>
+    <div class="control">
+      <input
+        type="checkbox"
+        id="google"
+        name="acquisition"
+        value="google"
+        formControlName="0"
+      />
+      <label for="google">Google</label>
+    </div>
+
+
+Handle globally errors
+
+  @if (signupForm.touched && signupForm.invalid){
+  <p class="control-error">Invalid form, please check your inputs</p>
+  }
+
+
+
+Create Validator that checks multiple controls
+
+You should put controls in formgroup because you can register validators for the whole form group
+
+function equalValues(control: AbstractControl) {
+  // access to your controls, could be null
+  const password = control.get('password')?.value;
+  const confirmPassword = control.get('confirmPassword')?.value;
+
+  if (confirmPassword === password) {
+    return null; // valid
+  }
+
+  return {
+    passwordsNotEqual: true,
+  };
+}
+
+    passwords: new FormGroup(
+      {
+        password: new FormControl('', {
+          validators: [Validators.required, Validators.minLength(6)],
+        }),
+        confirmPassword: new FormControl('', {
+          validators: [Validators.required, Validators.minLength(6)],
+        }),
+      },
+      {
+        validators: [equalValues],
+      }
+    ),
+
+
+or make a factory function
+and use it like this
+
+validators: [equalValues('password', 'confirmPassword')],
+
+function equalValues(control1: string, control2: string) {
+  return (control: AbstractControl) => {
+    const password = control.get(control1)?.value;
+    const confirmPassword = control.get(control2)?.value;
+
+    if (confirmPassword === password) {
+      return null; // valid
+    }
+
+    return {
+      passwordsNotEqual: true,
+    };
+  };
+}
+
+
+
+
+///////
+Routing
+///////
+
+angular app is a single page app, only one page on the browser
+to feel like multiple pages, we use routing
+angular watches and manipulates the url and renders different components for different universal
+
+Enabling routing
+
+import { provideRouter } from '@angular/router';
+
+bootstrapApplication(AppComponent, {
+  providers: [provideRouter([])],
+}).catch((err) => console.error(err));
+
+Adding a route
+A route is a link, an object between a path and a component
+
+providers: [provideRouter([
+  { path: 'tasks', component: TaskComponent }
+])],
+
+Common to outsource all the routes in dedicated file app.routes.ts
+and also an app.config.ts file holding it
+routes:
+import { Routes } from '@angular/router';
+import { TasksComponent } from './tasks/tasks.component';
+
+export const routes: Routes = [{ path: 'tasks', component: TasksComponent }];
+
+appConfig
+import { ApplicationConfig } from '@angular/core';
+import { provideRouter } from '@angular/router';
+import { routes } from './app.routes';
+
+export const appConfig: ApplicationConfig = {
+  providers: [provideRouter(routes)],
+};
+
+
+main.ts
+...
+import { appConfig } from './app/app.config';
+
+bootstrapApplication(AppComponent, appConfig).catch((err) =>
+  console.error(err)
+);
+
+To render the components from the route, you need to tell angular where to render
+You do that with the <router-outlet />
+(import { RouterOutlet } from '@angular/router';)
+
+The tasks component will be rendered next to the router-outlet if you inspect the source on url /tasks
+
+
+
+Register multiple routes
+
+simple routes at the top, order of routes matters
+export const routes: Routes = [
+  { path: '', component: NoTaskComponent },
+  { path: 'tasks', component: TasksComponent },
+];
+
+If you use / in the path as 1st char, it's not working
+
+
+Adding Links
+instead of
+  <a href="/tasks">
+    <img [src]="imagePath()" [alt]="user().name" />
+    <span>{{ user().name }}</span>
+  </a>
+use:
+<a routerLink="/tasks">
+
+routerLink is an angular directive that you must import RouterLink
+
+
+
+Styling active links
+
+Use routerLinkActive to define a css class that should apply if active element
+
+
+
+Dynamic routes
+
+export const routes: Routes = [
+  { path: '', component: NoTaskComponent },
+  { path: 'users/:userId', component: TaskComponent },
+
+:userId is the dynamic part
+
+and you can use an array to compose the link:
+
+<a [routerLink]="['/users', user().id]" routerLinkActive="selected">
+
+
+
+Extracting dynamic routes via inputs
+
+Use an input with the name of the dynamic param
+userId = input.required<string>()
+
+And to get the inputs, you'll have to add in the app config providers:
+withComponentInputBinding:
+
+export const appConfig: ApplicationConfig = {
+  providers: [provideRouter(routes, withComponentInputBinding())],
+};
+
+
+
+Extracting dynamic routes via @Inputs
+
+@Input({required: true}) userId!: string;
+
+If you want to run some code whenever the input value changes, you can define an extra setter
+
+@Input()
+set userId(uid: string) {
+  console.log(uid);
+}
+
+
+
+Extracting dynamic routes via Observables (old way)
+
+private activatedRoute = inject(ActivatedRoute);
+ it will give you access to various Properties
+
+ userName = '';
+
+ ngOnInit() {
+  console.log(this.activatedRoute)
+ }
+it will contain paramMap (observable to subscribe) and much more
+  const sub = this.activatedRoute.paramMap.subscribe({
+    next: (paramMap) => {
+      this.userName = this.usersService.users.find(u => u.id === paramMap.get('userId'))?.name || '';
+    }
+  })
+  (then cleanup the sub with destroyRef)
+
+
+
+Nested routes
+
+Child routes: loads a component in another component
+path: 'users/:userId',
+component: UserComponent,
+children: [
+  {
+    path: 'tasks', // <donaim>/users/:userId/tasks
+    component: TasksComponent
+  }
+]
+the paths will be concatenated
+
+Child routes needs a separate <router-outlet /> in the component
+
+Any links defined in the component are relative to the current route
+<a routerLink="tasks/new">Add Task</a>
+will link to /users/:userId/tasks
+
+
+Access parent route data from inside nested routes
+
+By default child routes do not receive the  parameters as inputs
+so input binding will not work here
+you have to tell angular, by passing withRouterConfig()
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideRouter(
+      routes,
+      withComponentInputBinding(),
+      withRouterConfig({
+        paramsInheritanceStrategy: 'always',
+      })
+    ),
+  ],
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
